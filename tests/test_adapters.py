@@ -45,6 +45,47 @@ class TestAdapterMapping(unittest.TestCase):
         self.assertEqual(compute_fingerprint(finding_a), compute_fingerprint(finding_b))
         self.assertEqual(finding_a["fingerprint"], finding_b["fingerprint"])
 
+    def test_github_adapter_accepts_scalar_repo_and_pr_for_thread_payloads(self):
+        payload = {
+            "id": 1,
+            "file_path": "README.md",
+            "original_line": 3,
+            "body": "Thread reply should still normalize",
+            "category": "md.heading-style",
+            "severity": "info",
+            "repo": "mendyraul/reviewpulse",
+            "pull_request": 14,
+        }
+        draft = adapt_github_review_comment(payload)
+        finding = normalize_finding(draft)
+
+        self.assertEqual("mendyraul/reviewpulse", finding["repo"])
+        self.assertEqual(14, finding["prNumber"])
+        self.assertEqual("md.heading-style", finding["ruleId"])
+        self.assertEqual("info", finding["severity"])
+        self.assertEqual([], list(validate_finding(finding)))
+
+    def test_github_adapter_maps_start_end_line_fallbacks_for_suggested_change(self):
+        payload = {
+            "id": 2,
+            "path": "src/router.py",
+            "start_line": 88,
+            "original_end_line": 90,
+            "body": "Suggested change block",
+            "tag": "py.suggestion.logging",
+            "severity": "LOW",
+            "repository": {"full_name": "mendyraul/reviewpulse"},
+            "pull_request": {"number": 15},
+        }
+        draft = adapt_github_review_comment(payload)
+        finding = normalize_finding(draft)
+
+        self.assertEqual(88, finding["lineStart"])
+        self.assertEqual(90, finding["lineEnd"])
+        self.assertEqual("py.suggestion.logging", finding["ruleId"])
+        self.assertEqual("low", finding["severity"])
+        self.assertEqual([], list(validate_finding(finding)))
+
 
 if __name__ == "__main__":
     unittest.main()

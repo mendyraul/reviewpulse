@@ -30,8 +30,8 @@ def _normalize_severity(value: Any, default: str = "medium") -> str:
 
 def adapt_github_review_comment(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Map a GitHub review comment payload into the FindingDraft shape."""
-    repo = payload.get("repository", {})
-    pr = payload.get("pull_request", {})
+    repo = payload.get("repository") or payload.get("repo") or {}
+    pr = payload.get("pull_request") or payload.get("pr") or {}
 
     path = str(payload.get("path") or payload.get("file_path") or "")
     if not path:
@@ -60,8 +60,8 @@ def adapt_github_review_comment(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     return {
         "source": "github_review",
-        "repo": str(repo.get("full_name") or payload.get("repo")),
-        "prNumber": int(pr.get("number") or payload.get("pr_number")),
+        "repo": str(repo.get("full_name") if isinstance(repo, dict) else repo),
+        "prNumber": int(pr.get("number") if isinstance(pr, dict) else pr or payload.get("pr_number")),
         "path": path,
         "lineStart": line_start,
         "lineEnd": line_end,
