@@ -1,0 +1,11 @@
+{
+  "source": "github_review",
+  "repo": "mendyraul/reviewpulse",
+  "prNumber": 8,
+  "path": "README.md",
+  "lineStart": 3,
+  "lineEnd": 3,
+  "ruleId": "md.heading-style",
+  "severity": "info",
+  "message": "Use sentence case in title"
+}

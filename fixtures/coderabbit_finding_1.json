@@ -1,0 +1,11 @@
+{
+  "source": "coderabbit",
+  "repo": "mendyraul/reviewpulse",
+  "prNumber": 7,
+  "path": "src/normalize.py",
+  "lineStart": 12,
+  "lineEnd": 12,
+  "ruleId": "cr.performance.regex-compile",
+  "severity": "medium",
+  "message": "Pre-compile regex to avoid repeated compilation"
+}

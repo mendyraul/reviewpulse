@@ -1,0 +1,11 @@
+{
+  "source": "coderabbit",
+  "repo": "mendyraul/reviewpulse",
+  "prNumber": 7,
+  "path": "src/normalize.py",
+  "lineStart": 26,
+  "lineEnd": 26,
+  "ruleId": "cr.correctness.lowercase-null",
+  "severity": "high",
+  "message": "Guard against None before lower()"
+}

@@ -1,0 +1,11 @@
+{
+  "source": "github_review",
+  "repo": "mendyraul/reviewpulse",
+  "prNumber": 2,
+  "path": "src/router.py",
+  "lineStart": 48,
+  "lineEnd": 48,
+  "ruleId": "py.unused-import",
+  "severity": "low",
+  "message": "Remove unused import os"
+}

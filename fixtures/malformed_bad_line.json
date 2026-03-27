@@ -1,0 +1,11 @@
+{
+  "source": "coderabbit",
+  "repo": "mendyraul/reviewpulse",
+  "prNumber": 8,
+  "path": "src/core.py",
+  "lineStart": 0,
+  "lineEnd": 0,
+  "ruleId": "cr.invalid.line",
+  "severity": "low",
+  "message": "Line numbers must be >= 1"
+}

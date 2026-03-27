@@ -1,0 +1,11 @@
+{
+  "source": "github_review",
+  "repo": "mendyraul/reviewpulse",
+  "prNumber": 5,
+  "path": "src/adapter.py",
+  "lineStart": 40,
+  "lineEnd": 42,
+  "ruleId": "py.suggestion.logging",
+  "severity": "low",
+  "message": "Use structured logging with request id"
+}

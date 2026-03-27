@@ -1,0 +1,11 @@
+{
+  "source": "github_review",
+  "repo": "mendyraul/reviewpulse",
+  "prNumber": 2,
+  "path": "src/router.py",
+  "lineStart": 91,
+  "lineEnd": 94,
+  "ruleId": "py.mutable-default",
+  "severity": "high",
+  "message": "Avoid mutable default argument list"
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reviewpulse.dev/schema/finding.schema.json",
+  "title": "ReviewPulse Finding",
+  "type": "object",
+  "required": [
+    "source",
+    "repo",
+    "prNumber",
+    "path",
+    "lineStart",
+    "lineEnd",
+    "ruleId",
+    "severity",
+    "message",
+    "fingerprint",
+    "firstSeenAt",
+    "lastSeenAt"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "source": { "type": "string", "enum": ["github_review", "coderabbit"] },
+    "repo": { "type": "string", "minLength": 1 },
+    "prNumber": { "type": "integer", "minimum": 1 },
+    "path": { "type": "string", "minLength": 1 },
+    "lineStart": { "type": "integer", "minimum": 1 },
+    "lineEnd": { "type": "integer", "minimum": 1 },
+    "ruleId": { "type": "string", "minLength": 1 },
+    "severity": { "type": "string", "enum": ["critical", "high", "medium", "low", "info"] },
+    "message": { "type": "string", "minLength": 1 },
+    "fingerprint": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "firstSeenAt": { "type": "string", "format": "date-time" },
+    "lastSeenAt": { "type": "string", "format": "date-time" },
+    "metadata": {
+      "type": "object",
+      "default": {}
+    }
+  }
+}
