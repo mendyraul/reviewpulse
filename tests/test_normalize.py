@@ -10,7 +10,7 @@ FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 class TestNormalizeFinding(unittest.TestCase):
     def test_valid_fixtures_normalize_and_fingerprint_stable(self):
         for path in sorted(FIXTURE_DIR.glob("*.json")):
-            if path.name.startswith("malformed_"):
+            if path.name.startswith("malformed_") or path.name.startswith("adapter_"):
                 continue
 
             raw = json.loads(path.read_text(encoding="utf-8"))

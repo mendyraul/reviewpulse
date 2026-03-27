@@ -1,0 +1,16 @@
+{
+  "id": "cr_7788",
+  "path": "src/normalize.py",
+  "lineStart": 22,
+  "lineEnd": 22,
+  "message": "Hash payload should include canonical message spacing",
+  "severity": "HIGH",
+  "checkId": "CR.DETERMINISM.001",
+  "repo": {
+    "full_name": "mendyraul/reviewpulse"
+  },
+  "pr": {
+    "number": 12
+  },
+  "source": "webhook"
+}
