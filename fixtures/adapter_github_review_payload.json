@@ -1,0 +1,16 @@
+{
+  "id": 99112233,
+  "node_id": "PRRC_kwDOXX",
+  "path": "src/router.py",
+  "line": 48,
+  "end_line": 49,
+  "body": "Use explicit return type hints",
+  "severity": "warning",
+  "rule_id": "py.return-type",
+  "repository": {
+    "full_name": "mendyraul/reviewpulse"
+  },
+  "pull_request": {
+    "number": 12
+  }
+}

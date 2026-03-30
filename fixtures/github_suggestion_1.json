@@ -1,0 +1,11 @@
+{
+  "source": "github_review",
+  "repo": "mendyraul/reviewpulse",
+  "prNumber": 5,
+  "path": "src/adapter.py",
+  "lineStart": 33,
+  "lineEnd": 33,
+  "ruleId": "py.suggestion.error-handling",
+  "severity": "medium",
+  "message": "Wrap network call in retry-safe exception handling"
+}

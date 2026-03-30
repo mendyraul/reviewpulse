@@ -1,0 +1,11 @@
+{
+  "source": "coderabbit",
+  "repo": "mendyraul/reviewpulse",
+  "prNumber": 8,
+  "path": "tests/test_parse.py",
+  "lineStart": 14,
+  "lineEnd": 16,
+  "ruleId": "cr.test.flaky-time",
+  "severity": "medium",
+  "message": "Use fixed clock in unit test"
+}

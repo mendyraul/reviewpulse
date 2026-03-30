@@ -1,0 +1,10 @@
+{
+  "source": "github_review",
+  "repo": "mendyraul/reviewpulse",
+  "prNumber": 8,
+  "path": "README.md",
+  "lineStart": 3,
+  "lineEnd": 3,
+  "severity": "info",
+  "message": "Missing rule id should fail"
+}
