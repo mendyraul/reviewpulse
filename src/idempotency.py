@@ -3,15 +3,14 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from threading import Lock
 from typing import Any, Dict, Optional, Protocol
 
 
 class IdempotencyStore(Protocol):
     """Persistence adapter contract for idempotency keys."""
 
-    def seen(self, key: str) -> bool: ...
-
-    def remember(self, key: str, fingerprint: str) -> None: ...
+    def remember_if_absent(self, key: str, fingerprint: str) -> bool: ...
 
 
 @dataclass
@@ -19,15 +18,18 @@ class InMemoryIdempotencyStore:
     """Deterministic in-memory adapter for local tests/first implementation."""
 
     _keys: Dict[str, str]
+    _lock: Lock
 
     def __init__(self) -> None:
         self._keys = {}
+        self._lock = Lock()
 
-    def seen(self, key: str) -> bool:
-        return key in self._keys
-
-    def remember(self, key: str, fingerprint: str) -> None:
-        self._keys[key] = fingerprint
+    def remember_if_absent(self, key: str, fingerprint: str) -> bool:
+        with self._lock:
+            if key in self._keys:
+                return False
+            self._keys[key] = fingerprint
+            return True
 
 
 def _stable_payload_hash(payload: Dict[str, Any]) -> str:
@@ -51,7 +53,4 @@ def check_and_remember(
 ) -> bool:
     """Return True for first-write acceptance, False for duplicate replay rejection."""
     key = normalize_idempotency_key(payload)
-    if store.seen(key):
-        return False
-    store.remember(key, fingerprint or "")
-    return True
+    return store.remember_if_absent(key, fingerprint or "")
