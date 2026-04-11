@@ -84,6 +84,7 @@ class TestRanking(unittest.TestCase):
 
         ranked = rank_findings(findings)
         self.assertEqual(len(ranked), 2)
+        self.assertNotEqual(ranked[0]["clusterKey"], ranked[1]["clusterKey"])
 
     def test_deterministic_ordering_with_tie_breakers(self):
         findings = [

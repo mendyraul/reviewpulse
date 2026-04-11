@@ -9,10 +9,12 @@ SEVERITY_RANK = {name: idx for idx, name in enumerate(SEVERITY_ORDER)}
 
 
 def _norm_space(value: str) -> str:
+    """Collapse repeated whitespace and trim leading/trailing spaces."""
     return re.sub(r"\s+", " ", value.strip())
 
 
 def _cluster_payload(finding: Dict[str, Any]) -> str:
+    """Build canonical payload string used for deterministic cluster hashing."""
     return "|".join(
         [
             str(finding.get("repo", "")),
@@ -28,11 +30,13 @@ def _cluster_payload(finding: Dict[str, Any]) -> str:
 
 
 def compute_cluster_key(finding: Dict[str, Any]) -> str:
+    """Return stable SHA-256 cluster key for a finding."""
     payload = _cluster_payload(finding)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def _source_finding_id(finding: Dict[str, Any]) -> Optional[str]:
+    """Extract normalized source finding identifier from top-level/metadata keys."""
     metadata = finding.get("metadata") or {}
     candidate = (
         finding.get("sourceFindingId")
@@ -48,6 +52,7 @@ def _source_finding_id(finding: Dict[str, Any]) -> Optional[str]:
 
 
 def _cluster_sort_key(cluster: Dict[str, Any]) -> tuple:
+    """Produce deterministic ordering tuple for ranked cluster output."""
     severity = str(cluster.get("severity", "medium")).lower()
     return (
         SEVERITY_RANK.get(severity, len(SEVERITY_ORDER)),
@@ -59,6 +64,7 @@ def _cluster_sort_key(cluster: Dict[str, Any]) -> tuple:
 
 
 def rank_findings(findings: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Deduplicate findings into deterministic clusters ordered by severity/location."""
     grouped: Dict[str, Dict[str, Any]] = {}
 
     for finding in findings:
@@ -74,7 +80,7 @@ def rank_findings(findings: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 "path": finding.get("path"),
                 "lineStart": finding.get("lineStart"),
                 "lineEnd": finding.get("lineEnd", finding.get("lineStart")),
-                "ruleId": finding.get("ruleId"),
+                "ruleId": str(finding.get("ruleId", "")).lower(),
                 "message": _norm_space(str(finding.get("message", ""))),
                 "fingerprints": [],
                 "sourceFindingIds": [],

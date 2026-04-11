@@ -4,3 +4,4 @@
 2026-03-28 | Rico | Issue #9 | Implemented deterministic PR summary renderer + baseline metrics + tests + contract doc; validated 12 tests; pushed commit | feature branch updated (8486059)
 2026-03-28 | Rico | Issue #10 | Proactive closure: validated existing FindingDraft normalization contract implementation, reran test suite (12 passing), posted evidence and closed issue | Closed
 2026-04-10 | Rico | Issue #8 | Implemented deterministic dedupe + severity ranking engine (`src/ranking.py`) with fixture-backed tests for same-line/cross-source clustering, near-duplicate separation, and deterministic ordering (15 tests passing) | feature branch updated
+2026-04-10 | Rico | Issue #8 | Addressed PR #11 review feedback: normalized output ruleId casing, tightened near-duplicate cluster assertion, added ranking module docstrings; tests still 15 passing | feature branch updated
