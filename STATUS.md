@@ -10,3 +10,4 @@
 2026-04-11 | Rico | Issue #9 | Closeout verification: deterministic PR summary contract + baseline metrics revalidated (17 tests passing); posted evidence and closed issue | Closed
 2026-04-11 | Rico | Issue #7 | Closeout verification: adapter acceptance + deterministic malformed error behavior revalidated (17 tests passing); posted final evidence and closed issue | Closed
 2026-04-11 | Rico | Issue #2 | Phase 0 epic closeout verification completed (17 tests passing), posted acceptance evidence, and closed issue | Closed
+2026-04-11 | Rico | Issue #1 | Added one-command deterministic pipeline entrypoint (`python3 -m src.pipeline`) with artifact generation + pipeline test; validated 18 tests passing and generated run artifacts | feature branch updated
