@@ -24,3 +24,4 @@ python3 -m src.pipeline fixtures/adapter_github_review_payload.json fixtures/ada
 - `docs/finding-schema.md` — canonical deterministic finding schema and fingerprint formula
 - `docs/slice-b-ingest-handoff.md` — handoff contract for next ingest adapter slices
 - `docs/pr-summary-contract.md` — deterministic PR summary + baseline metrics contract
+- `docs/reliability-runbook.md` — reliability metrics/log outputs + DLQ triage/replay procedure

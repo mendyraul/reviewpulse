@@ -30,6 +30,13 @@ class PipelineTests(unittest.TestCase):
             self.assertIsInstance(ranked, list)
             self.assertGreater(len(ranked), 0)
 
+            reliability_metrics = json.loads(Path(tmp, "reliability-metrics.json").read_text(encoding="utf-8"))
+            self.assertEqual(reliability_metrics["processed"], report["normalized"])
+            self.assertEqual(reliability_metrics["deadLettered"], report["invalid"])
+
+            reliability_events = json.loads(Path(tmp, "reliability-events.json").read_text(encoding="utf-8"))
+            self.assertEqual(len(reliability_events), report["totalInput"])
+
 
 if __name__ == "__main__":
     unittest.main()
