@@ -107,6 +107,13 @@ class PipelineTests(unittest.TestCase):
             reliability_events = json.loads(Path(tmp, "reliability-events.json").read_text(encoding="utf-8"))
             self.assertEqual(len(reliability_events), report["totalInput"])
 
+            dead_letter_path = Path(tmp, "dead-letter.jsonl")
+            self.assertTrue(dead_letter_path.exists())
+            dead_letter_rows = [json.loads(line) for line in dead_letter_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            self.assertEqual(len(dead_letter_rows), report["invalid"])
+            self.assertIn("payload", dead_letter_rows[0])
+            self.assertIn("reason", dead_letter_rows[0])
+
 
 if __name__ == "__main__":
     unittest.main()

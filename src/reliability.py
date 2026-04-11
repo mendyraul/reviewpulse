@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple, Type
+from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type
 
 
 def _utc_now_iso() -> str:
@@ -27,6 +30,85 @@ RETRYABLE_EXCEPTIONS: Tuple[Type[BaseException], ...] = (TimeoutError, Connectio
 
 def is_retryable_error(error: BaseException) -> bool:
     return isinstance(error, RETRYABLE_EXCEPTIONS)
+
+
+def _stable_json(payload: Dict[str, Any]) -> str:
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+def _payload_hash(payload: Dict[str, Any]) -> str:
+    return hashlib.sha256(_stable_json(payload).encode("utf-8")).hexdigest()
+
+
+@dataclass(frozen=True)
+class DeadLetterEntry:
+    payload_file: str
+    reason: str
+    payload: Dict[str, Any]
+    attempts: int = 1
+    created_at: str = field(default_factory=_utc_now_iso)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "version": 1,
+            "id": f"dlq-{_payload_hash(self.payload)}",
+            "createdAt": self.created_at,
+            "payloadFile": self.payload_file,
+            "reason": self.reason,
+            "attempts": self.attempts,
+            "payloadHash": _payload_hash(self.payload),
+            "payload": self.payload,
+        }
+
+
+class DeadLetterQueue:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+
+    def write(self, entry: DeadLetterEntry) -> Dict[str, Any]:
+        record = entry.to_dict()
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, sort_keys=True) + "\n")
+        return record
+
+    def read_entries(self) -> List[Dict[str, Any]]:
+        if not self.path.exists():
+            return []
+
+        entries: List[Dict[str, Any]] = []
+        for line in self.path.read_text(encoding="utf-8").splitlines():
+            raw = line.strip()
+            if not raw:
+                continue
+            entries.append(json.loads(raw))
+        return entries
+
+
+class ReplayLedger:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _load(self) -> Dict[str, Any]:
+        if not self.path.exists():
+            return {"replayedIds": []}
+        return json.loads(self.path.read_text(encoding="utf-8"))
+
+    def _save(self, state: Dict[str, Any]) -> None:
+        self.path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+
+    def has_replayed(self, entry_id: str) -> bool:
+        state = self._load()
+        return entry_id in state.get("replayedIds", [])
+
+    def mark_replayed(self, entry_id: str) -> None:
+        state = self._load()
+        ids = list(state.get("replayedIds", []))
+        if entry_id not in ids:
+            ids.append(entry_id)
+            state["replayedIds"] = sorted(ids)
+            self._save(state)
 
 
 @dataclass
@@ -71,3 +153,37 @@ class ReliabilityTracker:
             "deadLettered": self.dead_lettered,
             "replayed": self.replayed,
         }
+
+
+def replay_dead_letters(
+    entries: Iterable[Dict[str, Any]],
+    *,
+    ledger: ReplayLedger,
+    dry_run: bool = True,
+    tracker: Optional[ReliabilityTracker] = None,
+) -> Dict[str, int]:
+    reliability = tracker or ReliabilityTracker()
+    attempted = 0
+    skipped = 0
+
+    for entry in entries:
+        entry_id = str(entry.get("id", ""))
+        payload_file = str(entry.get("payloadFile", "<unknown>"))
+        if not entry_id:
+            skipped += 1
+            continue
+
+        if ledger.has_replayed(entry_id):
+            skipped += 1
+            continue
+
+        attempted += 1
+        reliability.record_replay(payload_file)
+        if not dry_run:
+            ledger.mark_replayed(entry_id)
+
+    return {
+        "attempted": attempted,
+        "skipped": skipped,
+        "replayed": reliability.replayed,
+    }

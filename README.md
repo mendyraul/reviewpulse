@@ -13,11 +13,24 @@ Artifacts are written to `artifacts/pipeline-run/`:
 - `pr-summary.md`
 - `metrics.json`
 - `invalid-findings.json`
+- `dead-letter.jsonl` (terminal failures with payload + reason metadata)
+- `reliability-metrics.json`
+- `reliability-events.json`
 
 You can also pass explicit payload files and custom output path:
 
 ```bash
 python3 -m src.pipeline fixtures/adapter_github_review_payload.json fixtures/adapter_coderabbit_payload.json --output-dir /tmp/reviewpulse-run
+```
+
+Replay tooling (safe by default):
+
+```bash
+# Preview replay plan without mutating replay ledger
+python3 -m src.replay_dlq --dry-run
+
+# Mark entries replayed (idempotent; already replayed entries are skipped)
+python3 -m src.replay_dlq
 ```
 
 ## Current foundation docs

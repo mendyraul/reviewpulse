@@ -9,7 +9,7 @@ from src.adapters import adapt_coderabbit_finding, adapt_github_review_comment
 from src.normalize import normalize_finding, validate_finding
 from src.ranking import rank_findings
 from src.reporting import calculate_baseline_metrics, render_pr_summary
-from src.reliability import ReliabilityTracker, RetryPolicy, is_retryable_error
+from src.reliability import DeadLetterEntry, DeadLetterQueue, ReliabilityTracker, RetryPolicy, is_retryable_error
 
 
 def _load_payload(path: Path) -> Dict[str, Any]:
@@ -43,6 +43,7 @@ def run_pipeline(input_files: Iterable[Path], output_dir: Path) -> Dict[str, Any
     findings: List[Dict[str, Any]] = []
     invalid: List[Dict[str, Any]] = []
     reliability = ReliabilityTracker()
+    dead_letter_queue = DeadLetterQueue(output_dir / "dead-letter.jsonl")
 
     retry_policy = RetryPolicy()
 
@@ -57,7 +58,16 @@ def run_pipeline(input_files: Iterable[Path], output_dir: Path) -> Dict[str, Any
                 errors = list(validate_finding(normalized))
                 if errors:
                     invalid.append({"file": str(file), "errors": errors})
-                    reliability.record_dead_letter(str(file), reason="; ".join(errors), attempts=attempts)
+                    reason = "; ".join(errors)
+                    reliability.record_dead_letter(str(file), reason=reason, attempts=attempts)
+                    dead_letter_queue.write(
+                        DeadLetterEntry(
+                            payload_file=str(file),
+                            reason=reason,
+                            payload=payload,
+                            attempts=attempts,
+                        )
+                    )
                     break
 
                 findings.append(normalized)
@@ -79,6 +89,14 @@ def run_pipeline(input_files: Iterable[Path], output_dir: Path) -> Dict[str, Any
                     reason = f"retry-exhausted after {attempts} attempts: {exc}"
                 invalid.append({"file": str(file), "errors": [reason]})
                 reliability.record_dead_letter(str(file), reason=reason, attempts=attempts)
+                dead_letter_queue.write(
+                    DeadLetterEntry(
+                        payload_file=str(file),
+                        reason=reason,
+                        payload=payload,
+                        attempts=attempts,
+                    )
+                )
                 break
 
     ranked = rank_findings(findings)
