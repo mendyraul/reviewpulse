@@ -2,3 +2,5 @@
 2026-03-27 | Rico | Issue #7 | Added first-pass GitHub+CodeRabbit ingest adapters, adapter fixtures, and adapter tests; test suite now 7 passing; posted corrected issue update | feature branch updated (54b8e0d)
 2026-03-27 | Rico | Issue #7 | Hardened threaded/suggested-change GitHub payload handling; added 2 edge-case tests; suite now 9 passing; posted issue progress correction | feature branch updated (8dc9abf)
 2026-03-28 | Rico | Issue #9 | Implemented deterministic PR summary renderer + baseline metrics + tests + contract doc; validated 12 tests; pushed commit | feature branch updated (8486059)
+2026-03-28 | Rico | Issue #10 | Proactive closure: validated existing FindingDraft normalization contract implementation, reran test suite (12 passing), posted evidence and closed issue | Closed
+2026-04-10 | Rico | Issue #8 | Implemented deterministic dedupe + severity ranking engine (`src/ranking.py`) with fixture-backed tests for same-line/cross-source clustering, near-duplicate separation, and deterministic ordering (15 tests passing) | feature branch updated
