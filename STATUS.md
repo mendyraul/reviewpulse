@@ -4,3 +4,4 @@
 2026-03-28 | Rico | Issue #9 | Implemented deterministic PR summary renderer + baseline metrics + tests + contract doc; validated 12 tests; pushed commit | feature branch updated (8486059)
 2026-04-11 | Rico | Issue #12 | Implemented deterministic idempotency key contract + in-memory persistence adapter, added intake replay gate and tests, opened PR #16 | PR #16 open
 2026-04-11 | Rico | Issue #12 | Addressed PR #16 review feedback: made idempotency write atomic and expanded key-source branch tests (camelCase/event_id/hash fallback) | PR #16 updated
+2026-04-11 | Rico | Issue #12 | Verified PR #16 is CLEAN with CodeRabbit success and 18/18 tests passing; marked slice complete for merge | status:done
