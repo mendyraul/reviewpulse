@@ -2,7 +2,11 @@ import json
 import unittest
 from pathlib import Path
 
-from src.adapters import adapt_coderabbit_finding, adapt_github_review_comment
+from src.adapters import (
+    AdapterValidationError,
+    adapt_coderabbit_finding,
+    adapt_github_review_comment,
+)
 from src.normalize import compute_fingerprint, normalize_finding, validate_finding
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures"
@@ -85,6 +89,29 @@ class TestAdapterMapping(unittest.TestCase):
         self.assertEqual("py.suggestion.logging", finding["ruleId"])
         self.assertEqual("low", finding["severity"])
         self.assertEqual([], list(validate_finding(finding)))
+
+    def test_github_adapter_raises_deterministic_error_on_missing_line(self):
+        payload = {
+            "path": "src/core.py",
+            "body": "missing line should fail",
+            "repository": {"full_name": "mendyraul/reviewpulse"},
+            "pull_request": {"number": 20},
+        }
+        with self.assertRaises(AdapterValidationError) as ctx:
+            adapt_github_review_comment(payload)
+        self.assertEqual("ERR_GH_LINE_REQUIRED", ctx.exception.code)
+
+    def test_coderabbit_adapter_raises_deterministic_error_on_invalid_line(self):
+        payload = {
+            "path": "src/core.py",
+            "lineStart": 0,
+            "message": "bad line",
+            "repo": "mendyraul/reviewpulse",
+            "pr": 20,
+        }
+        with self.assertRaises(AdapterValidationError) as ctx:
+            adapt_coderabbit_finding(payload)
+        self.assertEqual("ERR_CR_LINE_INVALID", ctx.exception.code)
 
 
 if __name__ == "__main__":
