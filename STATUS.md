@@ -13,3 +13,4 @@
 2026-04-11 | Rico | Issue #1 | Added one-command deterministic pipeline entrypoint (`python3 -m src.pipeline`) with artifact generation + pipeline test; validated 18 tests passing and generated run artifacts | feature branch updated
 2026-04-11 | Rico | Issue #3 | Decomposed reliability epic into four executable child slices (#12-#15) with deterministic DoD and posted parent linkage comment for lane pickup | In Progress
 2026-04-11 | Rico | Issue #15 | Added deterministic reliability telemetry outputs (`reliability-metrics.json`, `reliability-events.json`), new reliability tracker tests, and DLQ triage/replay runbook; validated 19 tests passing | feature branch updated
+2026-04-11 | Rico | Issue #13 | Implemented bounded exponential retry policy (transient vs terminal classifier) in pipeline + reliability module, added deterministic retry tests, and validated 23 tests passing | feature branch updated

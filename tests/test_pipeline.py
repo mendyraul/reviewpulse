@@ -5,10 +5,80 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import src.pipeline as pipeline_module
 from src.pipeline import run_pipeline
 
 
 class PipelineTests(unittest.TestCase):
+    def test_pipeline_retries_transient_errors_then_processes(self) -> None:
+        payload = {
+            "source": "github_review",
+            "repo": "mendyraul/reviewpulse",
+            "prNumber": 1,
+            "path": "src/example.py",
+            "lineStart": 1,
+            "lineEnd": 1,
+            "ruleId": "style/nit",
+            "severity": "low",
+            "message": "Nit",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            payload_path = Path(tmp, "payload.json")
+            payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+            original_adapt = pipeline_module._adapt_payload
+            call_count = {"count": 0}
+
+            def flaky_adapt(raw):
+                call_count["count"] += 1
+                if call_count["count"] < 3:
+                    raise TimeoutError("transient timeout")
+                return original_adapt(raw)
+
+            pipeline_module._adapt_payload = flaky_adapt
+            try:
+                report = run_pipeline([payload_path], Path(tmp, "out"))
+            finally:
+                pipeline_module._adapt_payload = original_adapt
+
+            self.assertEqual(report["normalized"], 1)
+            self.assertEqual(report["invalid"], 0)
+            self.assertEqual(report["reliability"]["retried"], 2)
+
+    def test_pipeline_skips_retry_for_terminal_errors(self) -> None:
+        payload = {
+            "source": "github_review",
+            "repo": "mendyraul/reviewpulse",
+            "prNumber": 1,
+            "path": "src/example.py",
+            "lineStart": 1,
+            "lineEnd": 1,
+            "ruleId": "style/nit",
+            "severity": "low",
+            "message": "Nit",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            payload_path = Path(tmp, "payload.json")
+            payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+            original_adapt = pipeline_module._adapt_payload
+            call_count = {"count": 0}
+
+            def broken_adapt(_raw):
+                call_count["count"] += 1
+                raise ValueError("unsupported shape")
+
+            pipeline_module._adapt_payload = broken_adapt
+            try:
+                report = run_pipeline([payload_path], Path(tmp, "out"))
+            finally:
+                pipeline_module._adapt_payload = original_adapt
+
+            self.assertEqual(call_count["count"], 1)
+            self.assertEqual(report["normalized"], 0)
+            self.assertEqual(report["invalid"], 1)
+            self.assertEqual(report["reliability"]["retried"], 0)
+
     def test_pipeline_writes_expected_artifacts(self) -> None:
         fixture_dir = Path("fixtures")
         inputs = sorted(fixture_dir.glob("*.json"))

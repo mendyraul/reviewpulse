@@ -9,7 +9,7 @@ from src.adapters import adapt_coderabbit_finding, adapt_github_review_comment
 from src.normalize import normalize_finding, validate_finding
 from src.ranking import rank_findings
 from src.reporting import calculate_baseline_metrics, render_pr_summary
-from src.reliability import ReliabilityTracker
+from src.reliability import ReliabilityTracker, RetryPolicy, is_retryable_error
 
 
 def _load_payload(path: Path) -> Dict[str, Any]:
@@ -44,21 +44,42 @@ def run_pipeline(input_files: Iterable[Path], output_dir: Path) -> Dict[str, Any
     invalid: List[Dict[str, Any]] = []
     reliability = ReliabilityTracker()
 
+    retry_policy = RetryPolicy()
+
     for file in files:
         payload = _load_payload(file)
-        try:
-            adapted = _adapt_payload(payload)
-            normalized = normalize_finding(adapted)
-            errors = list(validate_finding(normalized))
-            if errors:
-                invalid.append({"file": str(file), "errors": errors})
-                reliability.record_dead_letter(str(file), reason="; ".join(errors))
-                continue
-            findings.append(normalized)
-            reliability.record_processed(str(file))
-        except Exception as exc:  # noqa: BLE001 - keep deterministic report in one pass
-            invalid.append({"file": str(file), "errors": [str(exc)]})
-            reliability.record_dead_letter(str(file), reason=str(exc))
+        attempts = 0
+        while True:
+            attempts += 1
+            try:
+                adapted = _adapt_payload(payload)
+                normalized = normalize_finding(adapted)
+                errors = list(validate_finding(normalized))
+                if errors:
+                    invalid.append({"file": str(file), "errors": errors})
+                    reliability.record_dead_letter(str(file), reason="; ".join(errors), attempts=attempts)
+                    break
+
+                findings.append(normalized)
+                reliability.record_processed(str(file))
+                break
+            except Exception as exc:  # noqa: BLE001 - keep deterministic report in one pass
+                retryable = is_retryable_error(exc)
+                if retryable and attempts < retry_policy.max_attempts:
+                    delay_s = retry_policy.delay_for_attempt(attempts)
+                    reliability.record_retry(
+                        str(file),
+                        reason=f"{exc} (retry in {delay_s:.1f}s)",
+                        attempts=attempts + 1,
+                    )
+                    continue
+
+                reason = str(exc)
+                if retryable and attempts >= retry_policy.max_attempts:
+                    reason = f"retry-exhausted after {attempts} attempts: {exc}"
+                invalid.append({"file": str(file), "errors": [reason]})
+                reliability.record_dead_letter(str(file), reason=reason, attempts=attempts)
+                break
 
     ranked = rank_findings(findings)
     summary = render_pr_summary(ranked)
