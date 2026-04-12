@@ -16,3 +16,5 @@
 2026-04-11 | Rico | Issue #13 | Implemented bounded exponential retry policy (transient vs terminal classifier) in pipeline + reliability module, added deterministic retry tests, and validated 23 tests passing | feature branch updated
 2026-04-11 | Rico | Issue #14 | Implemented DLQ JSONL artifact writer + replay CLI (`src.replay_dlq`) with dry-run/idempotent ledger behavior, expanded pipeline/reliability tests, and validated 24 tests passing | feature branch updated
 2026-04-11 | Rico | Issue #3 | Reliability epic closeout verification run completed (pipeline + dry-run replay evidence), parent acceptance confirmed against slices #12-#15, and issue closed | Closed
+2026-04-11 | Rico | Issue #4 | Decomposed dashboard UX epic into executable child slices #17-#20 with deterministic DoD; posted parent linkage/update comment for lane pickup | In Progress
+2026-04-11 | Rico | Issue #17 | Authored Active Findings Board UX spec with deterministic mock payload contract, interaction flows, and accessibility/keyboard acceptance checklist (`docs/ux/active-findings-board.md`) | feature branch updated
