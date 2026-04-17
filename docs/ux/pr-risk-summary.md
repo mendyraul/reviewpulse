@@ -81,6 +81,12 @@ If two findings have same severity:
   - Suggested mitigations
   - Link to code locations/diff anchors
 
+### URL + navigation state contract
+- Summary panel deep link: `?panel=pr-risk`
+- Finding detail deep link: `?panel=pr-risk&finding=<findingId>`
+- Severity filter state: `?panel=pr-risk&severity=high|medium|low`
+- Browser back must return to prior scroll position in the summary panel.
+
 ### From change footprint
 - Clicking critical surface count filters findings by surface area (e.g., auth/migrations).
 
