@@ -2,6 +2,9 @@
 2026-03-27 | Rico | Issue #7 | Added first-pass GitHub+CodeRabbit ingest adapters, adapter fixtures, and adapter tests; test suite now 7 passing; posted corrected issue update | feature branch updated (54b8e0d)
 2026-03-27 | Rico | Issue #7 | Hardened threaded/suggested-change GitHub payload handling; added 2 edge-case tests; suite now 9 passing; posted issue progress correction | feature branch updated (8dc9abf)
 2026-03-28 | Rico | Issue #9 | Implemented deterministic PR summary renderer + baseline metrics + tests + contract doc; validated 12 tests; pushed commit | feature branch updated (8486059)
+2026-04-11 | Rico | Issue #12 | Implemented deterministic idempotency key contract + in-memory persistence adapter, added intake replay gate and tests, opened PR #16 | PR #16 open
+2026-04-11 | Rico | Issue #12 | Addressed PR #16 review feedback: made idempotency write atomic and expanded key-source branch tests (camelCase/event_id/hash fallback) | PR #16 updated
+2026-04-11 | Rico | Issue #12 | Verified PR #16 is CLEAN with CodeRabbit success and 18/18 tests passing; marked slice complete for merge | status:done
 2026-04-17 | Rico | Issue #19 | Owner-routing visibility UX/status model doc completed; PR #21 open with CodeRabbit green | awaiting Raul merge decisio
 2026-04-17 | Rico | Issue #20 | Authored done-state workflow UX spec and opened PR #22 (feature/issue-20-done-state) | PR #22 open
 2026-04-17 | Rico | Issue #18 | Revalidated PR risk summary UX spec artifact and posted queue-first lane2 execution update; commit/push pending public-repo approval | blocked (approval)
