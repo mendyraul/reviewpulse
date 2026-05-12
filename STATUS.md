@@ -10,3 +10,5 @@
 2026-05-12 | Rico | Issue #34 | Added auditable done-state transition helper + tests; pushed commit d4e8de9 and commented issue with implementation details | in progress on PR #35
 2026-05-12 | Rico | Issue #34 | Lane2 03:05 ET run: reselected as highest-value backlog item; updated PR #35 with next slice + test-runtime blocker note | in progress
 2026-05-12 | Rico | Issue #34 | Added `reopen_finding` transition helper + tests; pushed commit f6f81f8 to PR #35 and posted issue execution update | in progress
+2026-05-12 | Rico | Issue #33 | Lane2 queue-first run: verified existing implementation branch in clean worktree; validation blocked locally by missing pytest dependency (`ModuleNotFoundError`) | blocked:infra (test runtime)
+2026-05-12 13:09 ET | Rico | Issue #33 | Added owner-routing view module (`src/owner_routing.py`) with unowned/stale counters + drilldown and regression tests (`tests/test_owner_routing.py`); targeted unittest passing (2/2) | ready for PR update
