@@ -18,3 +18,4 @@
 2026-04-17 17:12 ET | Rico | Issue #24 | Opened PR #27 and posted execution update on issue with validation proof (5 tests passing) | PR open
 2026-04-17 18:14 ET | Rico | Issue #25 | Implemented deterministic PR risk summary engine (`src/pr_risk_summary.py`) + regression tests (`tests/test_pr_risk_summary.py`); validated full suite (17 tests passing) | local implementation complete
 2026-04-17 20:13 ET | Rico | Issue #26 | Added Slice C owner-routing/done-state UX spec (`docs/ux/owner-routing-visibility.md`) plus routing extension in `docs/finding-schema.md`; prepared PR with issue-linked summary | ready for review
+2026-05-12 | Rico | Issue #31 | Added active findings view wrapper with filter/sort/pagination/state+CTA; added unittest coverage | PR pending
