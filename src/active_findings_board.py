@@ -7,12 +7,15 @@ from urllib.parse import parse_qs, urlencode
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 ACTIVE_STATUSES = {"new", "triaged", "in_progress"}
-ALL_STATUSES = ACTIVE_STATUSES | {"resolved"}
+DONE_STATUSES = {"resolved", "dismissed", "accepted_risk"}
+ALL_STATUSES = ACTIVE_STATUSES | DONE_STATUSES
 VALID_STATUS_TRANSITIONS = {
     "new": {"triaged"},
-    "triaged": {"in_progress", "resolved"},
-    "in_progress": {"resolved", "triaged"},
+    "triaged": {"in_progress", "resolved", "dismissed", "accepted_risk"},
+    "in_progress": {"resolved", "dismissed", "accepted_risk", "triaged"},
     "resolved": set(),
+    "dismissed": set(),
+    "accepted_risk": set(),
 }
 
 
@@ -74,7 +77,12 @@ def build_active_findings_board(
     )
 
 
-def transition_status(finding: Dict, target_status: str) -> Dict:
+def transition_status(
+    finding: Dict,
+    target_status: str,
+    reason: Optional[str] = None,
+    confirmed: bool = False,
+) -> Dict:
     if target_status not in ALL_STATUSES:
         raise ValueError(f"invalid_status:{target_status}")
 
@@ -86,10 +94,29 @@ def transition_status(finding: Dict, target_status: str) -> Dict:
     if target_status not in allowed:
         raise ValueError(f"invalid_transition:{current}->{target_status}")
 
+    is_done_transition = target_status in DONE_STATUSES
+    if is_done_transition:
+        if not confirmed:
+            raise ValueError("confirmation_required_for_done_state")
+        if not reason or not reason.strip():
+            raise ValueError("reason_required_for_done_state")
+
     updated = dict(finding)
     updated["status"] = target_status
+
+    history = list(updated.get("statusHistory", []))
+    event = {
+        "from": current,
+        "to": target_status,
+        "at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+    }
+    if reason:
+        event["reason"] = reason.strip()
+    history.append(event)
+    updated["statusHistory"] = history
+
     if target_status == "resolved":
-        updated["resolvedAt"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        updated["resolvedAt"] = event["at"]
     return updated
 
 
