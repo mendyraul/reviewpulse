@@ -1,6 +1,6 @@
 import pytest
 
-from src.workflow import transition_finding_state
+from src.workflow import reopen_finding, transition_finding_state
 
 
 def test_done_state_transition_writes_resolution_and_history() -> None:
@@ -24,3 +24,30 @@ def test_done_state_transition_writes_resolution_and_history() -> None:
 def test_done_state_requires_rationale() -> None:
     with pytest.raises(ValueError, match="Rationale is required"):
         transition_finding_state({"status": "open"}, actor="rico", to_state="dismissed", rationale="  ")
+
+
+def test_reopen_clears_resolution_timestamp_and_appends_history() -> None:
+    finding = {
+        "id": "F-2",
+        "status": "resolved",
+        "resolvedAt": "2026-05-12T06:00:00Z",
+        "history": [],
+    }
+
+    updated = reopen_finding(
+        finding,
+        actor="rico",
+        rationale="Regression detected in follow-up review",
+        now_iso="2026-05-12T07:30:00Z",
+    )
+
+    assert updated["status"] == "reopened"
+    assert "resolvedAt" not in updated
+    assert updated["reopenedAt"] == "2026-05-12T07:30:00Z"
+    assert updated["history"][-1]["from"] == "resolved"
+    assert updated["history"][-1]["to"] == "reopened"
+
+
+def test_reopen_requires_done_state() -> None:
+    with pytest.raises(ValueError, match="already open"):
+        reopen_finding({"status": "open"}, actor="rico", rationale="Still under investigation")
