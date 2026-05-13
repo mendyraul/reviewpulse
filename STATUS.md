@@ -18,3 +18,4 @@
 2026-04-17 17:12 ET | Rico | Issue #24 | Opened PR #27 and posted execution update on issue with validation proof (5 tests passing) | PR open
 2026-04-17 18:14 ET | Rico | Issue #25 | Implemented deterministic PR risk summary engine (`src/pr_risk_summary.py`) + regression tests (`tests/test_pr_risk_summary.py`); validated full suite (17 tests passing) | local implementation complete
 2026-04-17 20:13 ET | Rico | Issue #26 | Added Slice C owner-routing/done-state UX spec (`docs/ux/owner-routing-visibility.md`) plus routing extension in `docs/finding-schema.md`; prepared PR with issue-linked summary | ready for review
+2026-05-13 13:40 ET | Rico | Issue #32 | Added PR risk dashboard summary module (`src/risk_dashboard.py`) with 7d/30d windows, high-risk trend/hot-repo metrics, deep-link filters, and regression tests (`tests/test_risk_dashboard.py`); compile checks pass (pytest unavailable on host) | local implementation complete
