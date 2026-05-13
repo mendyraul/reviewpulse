@@ -36,6 +36,22 @@ def test_apply_done_decision_records_traceable_rationale_and_history():
     assert updated["history"][-1]["state"] == "dismissed"
 
 
+def test_apply_done_decision_rejects_done_to_done_transition():
+    finding = {"id": "f-1", "status": "resolved", "history": []}
+    decision = DoneDecision(
+        state="dismissed",
+        rationale="Reclassifying closure type",
+        actor="rico",
+        confirmation=True,
+    )
+
+    try:
+        apply_done_decision(finding, decision, now_iso="2026-05-12T19:10:00+00:00")
+        assert False, "expected invalid_transition:done_to_done"
+    except ValueError as err:
+        assert str(err) == "invalid_transition:done_to_done"
+
+
 def test_done_timeline_sorts_history():
     finding = {
         "history": [

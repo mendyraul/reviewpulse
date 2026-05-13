@@ -29,6 +29,10 @@ def apply_done_decision(finding: Dict, decision: DoneDecision, *, now_iso: Optio
     if not decision.confirmation:
         raise ValueError("confirmation_required")
 
+    current_state = str(finding.get("status") or "").strip()
+    if current_state in DONE_STATES and current_state != decision.state:
+        raise ValueError("invalid_transition:done_to_done")
+
     now = now_iso or _now_iso()
     updated = dict(finding)
     updated["status"] = decision.state
