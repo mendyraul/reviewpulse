@@ -1,6 +1,7 @@
 import unittest
 
 from src.pr_risk_summary import (
+    build_dashboard_summary,
     build_risk_summary,
     compute_risk_score,
     recommendation_for_score,
@@ -68,6 +69,17 @@ class TestPrRiskSummary(unittest.TestCase):
         self.assertEqual(row["recommendation"], "safe_to_merge")
         self.assertEqual(len(row["topDrivers"]), 3)
         self.assertTrue(row["topDrivers"][0]["evidenceUrl"].startswith("/evidence?pr=42"))
+
+    def test_dashboard_summary_window_and_links(self):
+        prs = [
+            {"number": 1, "repo": "mendyraul/reviewpulse", "updatedAt": "2026-05-10T10:00:00Z", "signals": {"test_delta": 90, "churn": 90, "ownership_hotspot": 80, "prior_defect_density": 80}},
+            {"number": 2, "repo": "mendyraul/reviewpulse", "updatedAt": "2026-05-09T10:00:00Z", "signals": {"test_delta": 10, "churn": 20, "ownership_hotspot": 20, "prior_defect_density": 10}},
+            {"number": 3, "repo": "mendyraul/other", "updatedAt": "2026-04-30T10:00:00Z", "signals": {"test_delta": 95, "churn": 95, "ownership_hotspot": 95, "prior_defect_density": 95}},
+        ]
+        summary = build_dashboard_summary(prs, window_days=7, now_iso="2026-05-13T10:00:00Z")
+        self.assertEqual(summary["highRiskPrCount"], 1)
+        self.assertEqual(summary["hotRepositories"][0]["repo"], "mendyraul/reviewpulse")
+        self.assertIn("windowDays=7", summary["links"]["highRiskPrs"])
 
 
 if __name__ == "__main__":
