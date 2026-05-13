@@ -1,3 +1,5 @@
+import pytest
+
 from src.done_state import DoneDecision, apply_done_decision, done_timeline
 
 
@@ -10,11 +12,10 @@ def test_apply_done_decision_requires_confirmation():
         confirmation=False,
     )
 
-    try:
+    with pytest.raises(ValueError) as exc_info:
         apply_done_decision(finding, decision, now_iso="2026-05-12T19:10:00+00:00")
-        assert False, "expected confirmation_required"
-    except ValueError as err:
-        assert str(err) == "confirmation_required"
+
+    assert str(exc_info.value) == "confirmation_required"
 
 
 def test_apply_done_decision_records_traceable_rationale_and_history():
