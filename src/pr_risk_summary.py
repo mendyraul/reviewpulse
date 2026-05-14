@@ -129,6 +129,14 @@ def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
         return None
 
 
+def _severity_for_score(score: int) -> str:
+    if score >= 70:
+        return "high"
+    if score >= 40:
+        return "medium"
+    return "low"
+
+
 def build_pr_risk_panel(pr_rows: Iterable[Dict], window_days: int = 7, now_iso: Optional[str] = None) -> Dict:
     now = _parse_iso(now_iso) if now_iso else datetime.now(tz=timezone.utc)
     if now is None:
@@ -151,19 +159,33 @@ def build_pr_risk_panel(pr_rows: Iterable[Dict], window_days: int = 7, now_iso: 
     previous_high = sum(1 for row in previous if int(row.get("riskScore", 0)) >= 70)
 
     repo_counts: Dict[str, int] = {}
+    severity_breakdown = {"high": 0, "medium": 0, "low": 0}
+    top_driver_counts: Dict[str, int] = {}
     for row in current:
-        if int(row.get("riskScore", 0)) < 70:
-            continue
-        repo = row.get("repo") or "unknown"
-        repo_counts[repo] = repo_counts.get(repo, 0) + 1
+        score = int(row.get("riskScore", 0))
+        severity_breakdown[_severity_for_score(score)] += 1
+        if score >= 70:
+            repo = row.get("repo") or "unknown"
+            repo_counts[repo] = repo_counts.get(repo, 0) + 1
+
+        for driver in row.get("topDrivers", []):
+            signal = driver.get("signal")
+            if signal:
+                top_driver_counts[signal] = top_driver_counts.get(signal, 0) + 1
 
     hot_repos = [{"repo": repo, "highRiskCount": count} for repo, count in sorted(repo_counts.items(), key=lambda x: (-x[1], x[0]))[:3]]
+    top_contributors = [
+        {"signal": signal, "count": count, "link": f"/findings?signal={signal}&window={window_days}d"}
+        for signal, count in sorted(top_driver_counts.items(), key=lambda x: (-x[1], x[0]))[:3]
+    ]
 
     base_q = f"window={window_days}d"
     return {
         "window": f"{window_days}d",
         "highRiskPrCount": current_high,
         "trend": current_high - previous_high,
+        "severityBreakdown": severity_breakdown,
+        "topContributors": top_contributors,
         "hotRepositories": hot_repos,
         "links": {
             "highRiskPrs": f"/prs?risk=high&{base_q}",

@@ -90,7 +90,31 @@ class TestPrRiskSummary(unittest.TestCase):
         self.assertEqual(panel["highRiskPrCount"], 2)
         self.assertEqual(panel["trend"], 1)
         self.assertEqual(panel["hotRepositories"][0]["repo"], "a/r1")
+        self.assertEqual(panel["severityBreakdown"], {"high": 2, "medium": 1, "low": 0})
         self.assertIn("/prs?risk=high&window=7d", panel["links"]["highRiskPrs"])
+
+    def test_build_pr_risk_panel_includes_top_contributors(self):
+        panel = build_pr_risk_panel(
+            [
+                {
+                    "repo": "a/r1",
+                    "riskScore": 81,
+                    "createdAt": "2026-05-11T10:00:00Z",
+                    "topDrivers": [{"signal": "churn"}, {"signal": "test_delta"}],
+                },
+                {
+                    "repo": "a/r2",
+                    "riskScore": 72,
+                    "createdAt": "2026-05-11T11:00:00Z",
+                    "topDrivers": [{"signal": "churn"}, {"signal": "ownership_hotspot"}],
+                },
+            ],
+            now_iso="2026-05-12T12:00:00Z",
+        )
+
+        self.assertEqual(panel["topContributors"][0]["signal"], "churn")
+        self.assertEqual(panel["topContributors"][0]["count"], 2)
+        self.assertTrue(panel["topContributors"][0]["link"].startswith("/findings?signal=churn"))
 
     def test_cta_actions_emit_tracking_event_and_backend_update(self):
         now = "2026-05-14T10:35:00Z"
