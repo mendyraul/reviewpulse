@@ -21,6 +21,11 @@ class TestOwnerRouting(unittest.TestCase):
         self.assertEqual(view["summary"]["owners"]["rico"], 1)
         self.assertEqual(len(view["drilldown"]), 2)
 
+        stale_row = view["rows"][0]
+        self.assertEqual(stale_row["owner"], "unassigned")
+        self.assertEqual(stale_row["routingStatus"], "stale_unassigned")
+        self.assertEqual(stale_row["assignmentAction"], "pending_backend")
+
     def test_team_filter(self):
         view = build_owner_routing_view(self.findings, filters=OwnerRoutingFilters(team="alpha"), now=self.now)
         self.assertEqual(view["summary"]["unowned"], 1)
