@@ -2,6 +2,7 @@ import unittest
 
 from src.pr_risk_summary import (
     build_pr_risk_panel,
+    build_risk_cta,
     build_risk_summary,
     compute_risk_score,
     recommendation_for_score,
@@ -90,6 +91,19 @@ class TestPrRiskSummary(unittest.TestCase):
         self.assertEqual(panel["trend"], 1)
         self.assertEqual(panel["hotRepositories"][0]["repo"], "a/r1")
         self.assertIn("/prs?risk=high&window=7d", panel["links"]["highRiskPrs"])
+
+    def test_cta_actions_emit_tracking_event_and_backend_update(self):
+        now = "2026-05-14T10:35:00Z"
+        cta = build_risk_cta("request_review", "mendyraul/reviewpulse", 46, "rico", now)
+
+        self.assertEqual(cta["trackingEvent"]["type"], "pr.risk.request_review")
+        self.assertEqual(cta["trackingEvent"]["repo"], "mendyraul/reviewpulse")
+        self.assertEqual(cta["backendUpdate"]["fields"]["reviewRequested"], True)
+        self.assertEqual(cta["backendUpdate"]["updatedAt"], now)
+
+    def test_unknown_cta_action_raises(self):
+        with self.assertRaises(ValueError):
+            build_risk_cta("ship_it", "mendyraul/reviewpulse", 46, "rico")
 
 
 if __name__ == "__main__":

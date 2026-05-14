@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Iterable, List, Optional
+from uuid import uuid4
 from urllib.parse import urlencode
 
 
@@ -167,5 +168,43 @@ def build_pr_risk_panel(pr_rows: Iterable[Dict], window_days: int = 7, now_iso: 
         "links": {
             "highRiskPrs": f"/prs?risk=high&{base_q}",
             "findings": f"/findings?severity=high&{base_q}",
+        },
+    }
+
+
+def build_risk_cta(action: str, repo: str, pr_number: int, actor: str, now_iso: Optional[str] = None) -> Dict:
+    action_map = {
+        "request_review": {
+            "eventType": "pr.risk.request_review",
+            "update": {"reviewRequested": True, "reviewRequestedBy": actor},
+        },
+        "assign_owner": {
+            "eventType": "pr.risk.assign_owner",
+            "update": {"owner": actor, "ownerAssignedAt": now_iso},
+        },
+        "open_mitigation_task": {
+            "eventType": "pr.risk.open_mitigation_task",
+            "update": {"mitigationTaskRequested": True, "mitigationRequestedBy": actor},
+        },
+    }
+    if action not in action_map:
+        raise ValueError(f"Unsupported CTA action: {action}")
+
+    event_time = now_iso or datetime.now(tz=timezone.utc).isoformat()
+    payload = action_map[action]
+    return {
+        "trackingEvent": {
+            "id": f"evt_{uuid4().hex[:12]}",
+            "type": payload["eventType"],
+            "repo": repo,
+            "prNumber": int(pr_number),
+            "actor": actor,
+            "at": event_time,
+        },
+        "backendUpdate": {
+            "repo": repo,
+            "prNumber": int(pr_number),
+            "fields": payload["update"],
+            "updatedAt": event_time,
         },
     }
