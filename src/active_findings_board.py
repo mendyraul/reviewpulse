@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import parse_qs, urlencode
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
@@ -62,6 +62,10 @@ def build_active_findings_board(
             continue
         enriched = dict(item)
         enriched["ageHours"] = compute_age_hours(enriched["firstSeenAt"], now=now)
+        enriched["riskScore"] = float(enriched.get("riskScore") or (100 - (SEVERITY_ORDER.get(enriched.get("severity", "info"), 4) * 20)))
+        repo = enriched.get("repo") or enriched.get("repository") or ""
+        fid = enriched.get("id") or enriched.get("fingerprint") or ""
+        enriched["cta"] = f"/findings/{repo}/{fid}" if repo and fid else "/findings"
         filtered.append(enriched)
 
     return sorted(
@@ -72,6 +76,44 @@ def build_active_findings_board(
             f.get("fingerprint", ""),
         ),
     )
+
+
+def build_active_findings_view(
+    findings: Iterable[Dict[str, Any]],
+    *,
+    filters: BoardFilters = BoardFilters(),
+    sort_by: str = "risk",
+    page: int = 1,
+    page_size: int = 25,
+    now: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    rows = build_active_findings_board(findings, filters=filters, now=now)
+    if sort_by == "updated":
+        rows.sort(key=lambda r: _parse_iso8601(r.get("updatedAt", "1970-01-01T00:00:00Z")), reverse=True)
+    else:
+        rows.sort(key=lambda r: (r.get("riskScore", 0), r.get("ageHours", 0)), reverse=True)
+
+    safe_page = max(1, int(page))
+    safe_size = max(1, min(100, int(page_size)))
+    start = (safe_page - 1) * safe_size
+    end = start + safe_size
+    sliced = rows[start:end]
+
+    return {
+        "rows": sliced,
+        "total": len(rows),
+        "hasMore": end < len(rows),
+        "states": {"loading": False, "error": None, "empty": len(rows) == 0},
+        "filters": {
+            "severity": filters.severity,
+            "owner": filters.owner,
+            "status": filters.status,
+            "repo": filters.repo,
+            "sortBy": sort_by,
+            "page": safe_page,
+            "pageSize": safe_size,
+        },
+    }
 
 
 def transition_status(finding: Dict, target_status: str) -> Dict:

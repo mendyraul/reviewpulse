@@ -1,6 +1,7 @@
 import unittest
 
 from src.pr_risk_summary import (
+    build_pr_risk_panel,
     build_risk_summary,
     compute_risk_score,
     recommendation_for_score,
@@ -55,6 +56,8 @@ class TestPrRiskSummary(unittest.TestCase):
             {
                 "number": 42,
                 "title": "Reduce flaky test retries",
+                "repo": "mendyraul/reviewpulse",
+                "createdAt": "2026-05-12T10:00:00Z",
                 "signals": {
                     "test_delta": 20,
                     "churn": 10,
@@ -67,7 +70,26 @@ class TestPrRiskSummary(unittest.TestCase):
         self.assertEqual(row["prNumber"], 42)
         self.assertEqual(row["recommendation"], "safe_to_merge")
         self.assertEqual(len(row["topDrivers"]), 3)
+        self.assertEqual(row["repo"], "mendyraul/reviewpulse")
         self.assertTrue(row["topDrivers"][0]["evidenceUrl"].startswith("/evidence?pr=42"))
+
+    def test_build_pr_risk_panel_7d_window_with_trend_and_hot_repos(self):
+        panel = build_pr_risk_panel(
+            [
+                {"repo": "a/r1", "riskScore": 81, "createdAt": "2026-05-11T10:00:00Z"},
+                {"repo": "a/r1", "riskScore": 75, "createdAt": "2026-05-10T10:00:00Z"},
+                {"repo": "a/r2", "riskScore": 40, "createdAt": "2026-05-10T10:00:00Z"},
+                {"repo": "a/r2", "riskScore": 80, "createdAt": "2026-05-02T10:00:00Z"},
+            ],
+            window_days=7,
+            now_iso="2026-05-12T12:00:00Z",
+        )
+
+        self.assertEqual(panel["window"], "7d")
+        self.assertEqual(panel["highRiskPrCount"], 2)
+        self.assertEqual(panel["trend"], 1)
+        self.assertEqual(panel["hotRepositories"][0]["repo"], "a/r1")
+        self.assertIn("/prs?risk=high&window=7d", panel["links"]["highRiskPrs"])
 
 
 if __name__ == "__main__":
