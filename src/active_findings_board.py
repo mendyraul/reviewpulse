@@ -14,6 +14,11 @@ VALID_STATUS_TRANSITIONS = {
     "in_progress": {"resolved", "triaged"},
     "resolved": set(),
 }
+BULK_ACTION_TO_STATUS = {
+    "acknowledge": "triaged",
+    "snooze": "in_progress",
+    "close": "resolved",
+}
 
 
 @dataclass(frozen=True)
@@ -159,3 +164,34 @@ def filters_from_query(query_string: str) -> BoardFilters:
         status=first("status"),
         repo=first("repo"),
     )
+
+
+def bulk_transition_findings(findings: Iterable[Dict[str, Any]], action: str) -> Dict[str, Any]:
+    if action not in BULK_ACTION_TO_STATUS:
+        raise ValueError(f"invalid_bulk_action:{action}")
+
+    target = BULK_ACTION_TO_STATUS[action]
+    updated_rows: List[Dict[str, Any]] = []
+    skipped = 0
+    failures: List[Dict[str, str]] = []
+
+    for finding in findings:
+        try:
+            updated_rows.append(transition_status(finding, target))
+        except ValueError as exc:
+            skipped += 1
+            failures.append(
+                {
+                    "fingerprint": str(finding.get("fingerprint", "")),
+                    "error": str(exc),
+                }
+            )
+
+    return {
+        "action": action,
+        "targetStatus": target,
+        "updated": len(updated_rows),
+        "skipped": skipped,
+        "rows": updated_rows,
+        "failures": failures,
+    }
