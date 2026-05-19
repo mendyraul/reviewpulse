@@ -49,9 +49,12 @@ def build_owner_routing_view(
         is_stale_unowned = is_unowned and age_hours > 48
 
         row = dict(finding)
+        row["owner"] = owner or "unassigned"
         row["ageHours"] = age_hours
         row["isUnowned"] = is_unowned
         row["isStaleUnowned"] = is_stale_unowned
+        row["routingStatus"] = "stale_unassigned" if is_stale_unowned else ("unassigned" if is_unowned else "owned")
+        row["assignmentAction"] = "pending_backend" if is_unowned else "assigned"
         rows.append(row)
 
         if is_unowned:
@@ -59,7 +62,7 @@ def build_owner_routing_view(
             if is_stale_unowned:
                 stale_unowned += 1
         else:
-            owner_counts[owner] += 1
+            owner_counts[row["owner"]] += 1
 
     rows.sort(key=lambda r: (not r["isStaleUnowned"], not r["isUnowned"], -r.get("ageHours", 0)))
 
