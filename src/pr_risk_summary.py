@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Iterable, List, Optional
 from urllib.parse import urlencode
 
@@ -101,6 +102,8 @@ def summarize_pr_row(pr: Dict) -> Dict:
     return {
         "prNumber": pr_number,
         "title": pr.get("title", ""),
+        "repo": pr.get("repo", ""),
+        "createdAt": pr.get("createdAt"),
         "riskScore": summary.risk_score,
         "confidence": summary.confidence,
         "recommendation": summary.recommendation,
@@ -112,4 +115,57 @@ def summarize_pr_row(pr: Dict) -> Dict:
             }
             for signal in summary.top_drivers
         ],
+    }
+
+
+def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
+    if not ts:
+        return None
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def build_pr_risk_panel(pr_rows: Iterable[Dict], window_days: int = 7, now_iso: Optional[str] = None) -> Dict:
+    now = _parse_iso(now_iso) if now_iso else datetime.now(tz=timezone.utc)
+    if now is None:
+        now = datetime.now(tz=timezone.utc)
+
+    window_start = now - timedelta(days=window_days)
+    previous_start = window_start - timedelta(days=window_days)
+
+    current, previous = [], []
+    for row in pr_rows:
+        created = _parse_iso(row.get("createdAt"))
+        if not created:
+            continue
+        if created >= window_start:
+            current.append(row)
+        elif created >= previous_start:
+            previous.append(row)
+
+    current_high = sum(1 for row in current if int(row.get("riskScore", 0)) >= 70)
+    previous_high = sum(1 for row in previous if int(row.get("riskScore", 0)) >= 70)
+
+    repo_counts: Dict[str, int] = {}
+    for row in current:
+        if int(row.get("riskScore", 0)) < 70:
+            continue
+        repo = row.get("repo") or "unknown"
+        repo_counts[repo] = repo_counts.get(repo, 0) + 1
+
+    hot_repos = [{"repo": repo, "highRiskCount": count} for repo, count in sorted(repo_counts.items(), key=lambda x: (-x[1], x[0]))[:3]]
+
+    base_q = f"window={window_days}d"
+    return {
+        "window": f"{window_days}d",
+        "highRiskPrCount": current_high,
+        "trend": current_high - previous_high,
+        "hotRepositories": hot_repos,
+        "links": {
+            "highRiskPrs": f"/prs?risk=high&{base_q}",
+            "findings": f"/findings?severity=high&{base_q}",
+        },
     }

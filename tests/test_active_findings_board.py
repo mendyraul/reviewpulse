@@ -4,9 +4,11 @@ from datetime import datetime, timezone
 from src.active_findings_board import (
     BoardFilters,
     build_active_findings_board,
+    build_active_findings_view,
     filters_from_query,
     filters_to_query,
     transition_status,
+    bulk_transition_findings,
 )
 
 
@@ -78,6 +80,28 @@ class TestActiveFindingsBoard(unittest.TestCase):
         query = filters_to_query(filters)
         restored = filters_from_query(query)
         self.assertEqual(restored, filters)
+
+    def test_view_sort_pagination_and_states(self):
+        view = build_active_findings_view(self.findings, sort_by="risk", page=1, page_size=2, now=self.now)
+        self.assertEqual(view["total"], 3)
+        self.assertTrue(view["hasMore"])
+        self.assertFalse(view["states"]["empty"])
+        self.assertEqual(len(view["rows"]), 2)
+        self.assertIn("cta", view["rows"][0])
+
+    def test_bulk_transition_acknowledge_and_invalid_rows(self):
+        result = bulk_transition_findings(self.findings, "acknowledge")
+        self.assertEqual(result["targetStatus"], "triaged")
+        self.assertEqual(result["updated"], 2)
+        self.assertEqual(result["skipped"], 2)
+        self.assertEqual([row["fingerprint"] for row in result["rows"]], ["a", "d"])
+
+    def test_bulk_transition_close_happy_path(self):
+        triaged = transition_status(self.findings[0], "triaged")
+        in_progress = transition_status(triaged, "in_progress")
+        result = bulk_transition_findings([in_progress], "close")
+        self.assertEqual(result["updated"], 1)
+        self.assertEqual(result["rows"][0]["status"], "resolved")
 
 
 if __name__ == "__main__":
