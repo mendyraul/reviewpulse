@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Iterable, List, Optional
+from uuid import uuid4
 from urllib.parse import urlencode
 
 
@@ -103,6 +104,7 @@ def summarize_pr_row(pr: Dict) -> Dict:
         "prNumber": pr_number,
         "title": pr.get("title", ""),
         "repo": pr.get("repo", ""),
+        "createdAt": pr.get("createdAt"),
         "riskScore": summary.risk_score,
         "confidence": summary.confidence,
         "recommendation": summary.recommendation,
@@ -122,6 +124,8 @@ def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
         return None
     try:
         return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
     except ValueError:
         return None
 
@@ -160,5 +164,104 @@ def build_dashboard_summary(pr_rows: Iterable[Dict], *, window_days: int = 7, no
         "links": {
             "highRiskPrs": f"/prs?{query}",
             "highRiskFindings": f"/findings?{query}",
+def _severity_for_score(score: int) -> str:
+    if score >= 70:
+        return "high"
+    if score >= 40:
+        return "medium"
+    return "low"
+
+
+def build_pr_risk_panel(pr_rows: Iterable[Dict], window_days: int = 7, now_iso: Optional[str] = None) -> Dict:
+    now = _parse_iso(now_iso) if now_iso else datetime.now(tz=timezone.utc)
+    if now is None:
+        now = datetime.now(tz=timezone.utc)
+
+    window_start = now - timedelta(days=window_days)
+    previous_start = window_start - timedelta(days=window_days)
+
+    current, previous = [], []
+    for row in pr_rows:
+        created = _parse_iso(row.get("createdAt"))
+        if not created:
+            continue
+        if created >= window_start:
+            current.append(row)
+        elif created >= previous_start:
+            previous.append(row)
+
+    current_high = sum(1 for row in current if int(row.get("riskScore", 0)) >= 70)
+    previous_high = sum(1 for row in previous if int(row.get("riskScore", 0)) >= 70)
+
+    repo_counts: Dict[str, int] = {}
+    severity_breakdown = {"high": 0, "medium": 0, "low": 0}
+    top_driver_counts: Dict[str, int] = {}
+    for row in current:
+        score = int(row.get("riskScore", 0))
+        severity_breakdown[_severity_for_score(score)] += 1
+        if score >= 70:
+            repo = row.get("repo") or "unknown"
+            repo_counts[repo] = repo_counts.get(repo, 0) + 1
+
+        for driver in row.get("topDrivers", []):
+            signal = driver.get("signal")
+            if signal:
+                top_driver_counts[signal] = top_driver_counts.get(signal, 0) + 1
+
+    hot_repos = [{"repo": repo, "highRiskCount": count} for repo, count in sorted(repo_counts.items(), key=lambda x: (-x[1], x[0]))[:3]]
+    top_contributors = [
+        {"signal": signal, "count": count, "link": f"/findings?signal={signal}&window={window_days}d"}
+        for signal, count in sorted(top_driver_counts.items(), key=lambda x: (-x[1], x[0]))[:3]
+    ]
+
+    base_q = f"window={window_days}d"
+    return {
+        "window": f"{window_days}d",
+        "highRiskPrCount": current_high,
+        "trend": current_high - previous_high,
+        "severityBreakdown": severity_breakdown,
+        "topContributors": top_contributors,
+        "hotRepositories": hot_repos,
+        "links": {
+            "highRiskPrs": f"/prs?risk=high&{base_q}",
+            "findings": f"/findings?severity=high&{base_q}",
+        },
+    }
+
+
+def build_risk_cta(action: str, repo: str, pr_number: int, actor: str, now_iso: Optional[str] = None) -> Dict:
+    action_map = {
+        "request_review": {
+            "eventType": "pr.risk.request_review",
+            "update": {"reviewRequested": True, "reviewRequestedBy": actor},
+        },
+        "assign_owner": {
+            "eventType": "pr.risk.assign_owner",
+            "update": {"owner": actor, "ownerAssignedAt": now_iso},
+        },
+        "open_mitigation_task": {
+            "eventType": "pr.risk.open_mitigation_task",
+            "update": {"mitigationTaskRequested": True, "mitigationRequestedBy": actor},
+        },
+    }
+    if action not in action_map:
+        raise ValueError(f"Unsupported CTA action: {action}")
+
+    event_time = now_iso or datetime.now(tz=timezone.utc).isoformat()
+    payload = action_map[action]
+    return {
+        "trackingEvent": {
+            "id": f"evt_{uuid4().hex[:12]}",
+            "type": payload["eventType"],
+            "repo": repo,
+            "prNumber": int(pr_number),
+            "actor": actor,
+            "at": event_time,
+        },
+        "backendUpdate": {
+            "repo": repo,
+            "prNumber": int(pr_number),
+            "fields": payload["update"],
+            "updatedAt": event_time,
         },
     }
