@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import parse_qs, urlencode
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
@@ -16,6 +16,11 @@ VALID_STATUS_TRANSITIONS = {
     "resolved": set(),
     "dismissed": set(),
     "accepted_risk": set(),
+}
+BULK_ACTION_TO_STATUS = {
+    "acknowledge": "triaged",
+    "snooze": "in_progress",
+    "close": "resolved",
 }
 
 
@@ -65,6 +70,10 @@ def build_active_findings_board(
             continue
         enriched = dict(item)
         enriched["ageHours"] = compute_age_hours(enriched["firstSeenAt"], now=now)
+        enriched["riskScore"] = float(enriched.get("riskScore") or (100 - (SEVERITY_ORDER.get(enriched.get("severity", "info"), 4) * 20)))
+        repo = enriched.get("repo") or enriched.get("repository") or ""
+        fid = enriched.get("id") or enriched.get("fingerprint") or ""
+        enriched["cta"] = f"/findings/{repo}/{fid}" if repo and fid else "/findings"
         filtered.append(enriched)
 
     return sorted(
@@ -77,12 +86,45 @@ def build_active_findings_board(
     )
 
 
-def transition_status(
-    finding: Dict,
-    target_status: str,
-    reason: Optional[str] = None,
-    confirmed: bool = False,
-) -> Dict:
+def build_active_findings_view(
+    findings: Iterable[Dict[str, Any]],
+    *,
+    filters: BoardFilters = BoardFilters(),
+    sort_by: str = "risk",
+    page: int = 1,
+    page_size: int = 25,
+    now: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    rows = build_active_findings_board(findings, filters=filters, now=now)
+    if sort_by == "updated":
+        rows.sort(key=lambda r: _parse_iso8601(r.get("updatedAt", "1970-01-01T00:00:00Z")), reverse=True)
+    else:
+        rows.sort(key=lambda r: (r.get("riskScore", 0), r.get("ageHours", 0)), reverse=True)
+
+    safe_page = max(1, int(page))
+    safe_size = max(1, min(100, int(page_size)))
+    start = (safe_page - 1) * safe_size
+    end = start + safe_size
+    sliced = rows[start:end]
+
+    return {
+        "rows": sliced,
+        "total": len(rows),
+        "hasMore": end < len(rows),
+        "states": {"loading": False, "error": None, "empty": len(rows) == 0},
+        "filters": {
+            "severity": filters.severity,
+            "owner": filters.owner,
+            "status": filters.status,
+            "repo": filters.repo,
+            "sortBy": sort_by,
+            "page": safe_page,
+            "pageSize": safe_size,
+        },
+    }
+
+
+def transition_status(finding: Dict, target_status: str) -> Dict:
     if target_status not in ALL_STATUSES:
         raise ValueError(f"invalid_status:{target_status}")
 
@@ -144,3 +186,34 @@ def filters_from_query(query_string: str) -> BoardFilters:
         status=first("status"),
         repo=first("repo"),
     )
+
+
+def bulk_transition_findings(findings: Iterable[Dict[str, Any]], action: str) -> Dict[str, Any]:
+    if action not in BULK_ACTION_TO_STATUS:
+        raise ValueError(f"invalid_bulk_action:{action}")
+
+    target = BULK_ACTION_TO_STATUS[action]
+    updated_rows: List[Dict[str, Any]] = []
+    skipped = 0
+    failures: List[Dict[str, str]] = []
+
+    for finding in findings:
+        try:
+            updated_rows.append(transition_status(finding, target))
+        except ValueError as exc:
+            skipped += 1
+            failures.append(
+                {
+                    "fingerprint": str(finding.get("fingerprint", "")),
+                    "error": str(exc),
+                }
+            )
+
+    return {
+        "action": action,
+        "targetStatus": target,
+        "updated": len(updated_rows),
+        "skipped": skipped,
+        "rows": updated_rows,
+        "failures": failures,
+    }
