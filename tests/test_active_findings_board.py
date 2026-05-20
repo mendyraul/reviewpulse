@@ -64,16 +64,41 @@ class TestActiveFindingsBoard(unittest.TestCase):
         finding = self.findings[0]
         triaged = transition_status(finding, "triaged")
         in_progress = transition_status(triaged, "in_progress")
-        resolved = transition_status(in_progress, "resolved")
+        resolved = transition_status(
+            in_progress,
+            "resolved",
+            reason="false positive fixed and validated",
+            confirmed=True,
+        )
 
         self.assertEqual(triaged["status"], "triaged")
         self.assertEqual(in_progress["status"], "in_progress")
         self.assertEqual(resolved["status"], "resolved")
         self.assertIn("resolvedAt", resolved)
+        self.assertTrue(resolved["statusHistory"])
+        self.assertEqual(resolved["statusHistory"][-1]["to"], "resolved")
 
     def test_invalid_status_transition_raises(self):
         with self.assertRaises(ValueError):
             transition_status(self.findings[0], "resolved")
+
+    def test_done_state_requires_reason_and_confirmation(self):
+        triaged = transition_status(self.findings[0], "triaged")
+        with self.assertRaises(ValueError):
+            transition_status(triaged, "dismissed", confirmed=True)
+        with self.assertRaises(ValueError):
+            transition_status(triaged, "accepted_risk", reason="known tradeoff")
+
+    def test_done_state_variants_are_supported(self):
+        triaged = transition_status(self.findings[0], "triaged")
+        dismissed = transition_status(
+            triaged,
+            "dismissed",
+            reason="duplicate finding",
+            confirmed=True,
+        )
+        self.assertEqual(dismissed["status"], "dismissed")
+        self.assertEqual(dismissed["statusHistory"][-1]["reason"], "duplicate finding")
 
     def test_filter_query_roundtrip(self):
         filters = BoardFilters(severity="high", owner="rico", status="new", repo="mendyraul/reviewpulse")
