@@ -1,6 +1,9 @@
 import unittest
 
 from src.pr_risk_summary import (
+    build_dashboard_summary,
+    build_pr_risk_panel,
+    build_risk_cta,
     build_risk_summary,
     compute_risk_score,
     recommendation_for_score,
@@ -55,6 +58,8 @@ class TestPrRiskSummary(unittest.TestCase):
             {
                 "number": 42,
                 "title": "Reduce flaky test retries",
+                "repo": "mendyraul/reviewpulse",
+                "createdAt": "2026-05-12T10:00:00Z",
                 "signals": {
                     "test_delta": 20,
                     "churn": 10,
@@ -67,7 +72,74 @@ class TestPrRiskSummary(unittest.TestCase):
         self.assertEqual(row["prNumber"], 42)
         self.assertEqual(row["recommendation"], "safe_to_merge")
         self.assertEqual(len(row["topDrivers"]), 3)
+        self.assertEqual(row["repo"], "mendyraul/reviewpulse")
         self.assertTrue(row["topDrivers"][0]["evidenceUrl"].startswith("/evidence?pr=42"))
+
+    def test_dashboard_summary_window_and_links(self):
+        prs = [
+            {"number": 1, "repo": "mendyraul/reviewpulse", "updatedAt": "2026-05-10T10:00:00Z", "signals": {"test_delta": 90, "churn": 90, "ownership_hotspot": 80, "prior_defect_density": 80}},
+            {"number": 2, "repo": "mendyraul/reviewpulse", "updatedAt": "2026-05-09T10:00:00Z", "signals": {"test_delta": 10, "churn": 20, "ownership_hotspot": 20, "prior_defect_density": 10}},
+            {"number": 3, "repo": "mendyraul/other", "updatedAt": "2026-04-30T10:00:00Z", "signals": {"test_delta": 95, "churn": 95, "ownership_hotspot": 95, "prior_defect_density": 95}},
+        ]
+        summary = build_dashboard_summary(prs, window_days=7, now_iso="2026-05-13T10:00:00Z")
+        self.assertEqual(summary["highRiskPrCount"], 1)
+        self.assertEqual(summary["hotRepositories"][0]["repo"], "mendyraul/reviewpulse")
+        self.assertIn("windowDays=7", summary["links"]["highRiskPrs"])
+        
+    def test_build_pr_risk_panel_7d_window_with_trend_and_hot_repos(self):
+        panel = build_pr_risk_panel(
+            [
+                {"repo": "a/r1", "riskScore": 81, "createdAt": "2026-05-11T10:00:00Z"},
+                {"repo": "a/r1", "riskScore": 75, "createdAt": "2026-05-10T10:00:00Z"},
+                {"repo": "a/r2", "riskScore": 40, "createdAt": "2026-05-10T10:00:00Z"},
+                {"repo": "a/r2", "riskScore": 80, "createdAt": "2026-05-02T10:00:00Z"},
+            ],
+            window_days=7,
+            now_iso="2026-05-12T12:00:00Z",
+        )
+
+        self.assertEqual(panel["window"], "7d")
+        self.assertEqual(panel["highRiskPrCount"], 2)
+        self.assertEqual(panel["trend"], 1)
+        self.assertEqual(panel["hotRepositories"][0]["repo"], "a/r1")
+        self.assertEqual(panel["severityBreakdown"], {"high": 2, "medium": 1, "low": 0})
+        self.assertIn("/prs?risk=high&window=7d", panel["links"]["highRiskPrs"])
+
+    def test_build_pr_risk_panel_includes_top_contributors(self):
+        panel = build_pr_risk_panel(
+            [
+                {
+                    "repo": "a/r1",
+                    "riskScore": 81,
+                    "createdAt": "2026-05-11T10:00:00Z",
+                    "topDrivers": [{"signal": "churn"}, {"signal": "test_delta"}],
+                },
+                {
+                    "repo": "a/r2",
+                    "riskScore": 72,
+                    "createdAt": "2026-05-11T11:00:00Z",
+                    "topDrivers": [{"signal": "churn"}, {"signal": "ownership_hotspot"}],
+                },
+            ],
+            now_iso="2026-05-12T12:00:00Z",
+        )
+
+        self.assertEqual(panel["topContributors"][0]["signal"], "churn")
+        self.assertEqual(panel["topContributors"][0]["count"], 2)
+        self.assertTrue(panel["topContributors"][0]["link"].startswith("/findings?signal=churn"))
+
+    def test_cta_actions_emit_tracking_event_and_backend_update(self):
+        now = "2026-05-14T10:35:00Z"
+        cta = build_risk_cta("request_review", "mendyraul/reviewpulse", 46, "rico", now)
+
+        self.assertEqual(cta["trackingEvent"]["type"], "pr.risk.request_review")
+        self.assertEqual(cta["trackingEvent"]["repo"], "mendyraul/reviewpulse")
+        self.assertEqual(cta["backendUpdate"]["fields"]["reviewRequested"], True)
+        self.assertEqual(cta["backendUpdate"]["updatedAt"], now)
+
+    def test_unknown_cta_action_raises(self):
+        with self.assertRaises(ValueError):
+            build_risk_cta("ship_it", "mendyraul/reviewpulse", 46, "rico")
 
 
 if __name__ == "__main__":

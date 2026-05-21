@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
 SEVERITY_ORDER = ["critical", "high", "medium", "low"]
@@ -76,6 +76,79 @@ def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
         return datetime.fromisoformat(normalized)
     except ValueError:
         return None
+
+
+def _normalize_owner(raw: Any) -> Optional[str]:
+    owner = str(raw or "").strip()
+    return owner if owner else None
+
+
+def _is_open_status(status: Any) -> bool:
+    return str(status or "open").lower() not in {"resolved", "closed", "fixed"}
+
+
+def calculate_owner_routing_metrics(
+    findings: Iterable[Dict[str, Any]],
+    *,
+    owner: Optional[str] = None,
+    team: Optional[str] = None,
+    stale_hours: int = 48,
+    now_iso: Optional[str] = None,
+) -> Dict[str, Any]:
+    rows = list(findings)
+    owner_filter = _normalize_owner(owner)
+    team_filter = str(team).strip().lower() if team else None
+
+    now_dt = _parse_iso(now_iso) if now_iso else datetime.now(timezone.utc)
+    if now_dt is None:
+        now_dt = datetime.now(timezone.utc)
+
+    filtered: List[Dict[str, Any]] = []
+    for row in rows:
+        row_owner = _normalize_owner(row.get("owner"))
+        row_team = str(row.get("team", "")).strip().lower() or None
+        if owner_filter and row_owner != owner_filter:
+            continue
+        if team_filter and row_team != team_filter:
+            continue
+        filtered.append(row)
+
+    open_rows = [row for row in filtered if _is_open_status(row.get("status"))]
+    unowned_open = [row for row in open_rows if not _normalize_owner(row.get("owner"))]
+    assigned_open = [row for row in open_rows if _normalize_owner(row.get("owner"))]
+
+    stale_unowned: List[Dict[str, Any]] = []
+    for row in unowned_open:
+        updated = _parse_iso(row.get("updatedAt") or row.get("firstSeenAt"))
+        if not updated:
+            stale_unowned.append(row)
+            continue
+        age_hours = (now_dt - updated).total_seconds() / 3600
+        if age_hours >= stale_hours:
+            stale_unowned.append(row)
+
+    owner_counts: Dict[str, int] = {}
+    team_counts: Dict[str, int] = {}
+    for row in open_rows:
+        row_owner = _normalize_owner(row.get("owner"))
+        row_team = str(row.get("team", "")).strip().lower() or "unscoped"
+        if row_owner:
+            owner_counts[row_owner] = owner_counts.get(row_owner, 0) + 1
+        team_counts[row_team] = team_counts.get(row_team, 0) + 1
+
+    return {
+        "openTotal": len(open_rows),
+        "unownedOpen": len(unowned_open),
+        "assignedOpen": len(assigned_open),
+        "staleUnownedOpen": len(stale_unowned),
+        "ownerCounts": dict(sorted(owner_counts.items(), key=lambda item: item[0])),
+        "teamCounts": dict(sorted(team_counts.items(), key=lambda item: item[0])),
+        "drilldown": {
+            "unowned": unowned_open,
+            "staleUnowned": stale_unowned,
+            "assigned": assigned_open,
+        },
+    }
 
 
 def calculate_baseline_metrics(findings: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
