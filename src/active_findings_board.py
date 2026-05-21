@@ -27,6 +27,11 @@ BULK_ACTION_TO_STATUS = {
     "snooze": "in_progress",
     "close": "resolved",
 }
+BULK_ACTION_TO_STATUS = {
+    "acknowledge": "triaged",
+    "snooze": "in_progress",
+    "close": "resolved",
+}
 
 
 @dataclass(frozen=True)
