@@ -123,12 +123,47 @@ def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
     if not ts:
         return None
     try:
+        return datetime.fromisoformat(ts.replace("Z", "+00:00"))
         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
         return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
     except ValueError:
         return None
 
 
+def build_dashboard_summary(pr_rows: Iterable[Dict], *, window_days: int = 7, now_iso: Optional[str] = None) -> Dict:
+    now = _parse_iso(now_iso) if now_iso else datetime.now(timezone.utc)
+    if now is None:
+        now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=window_days)
+
+    normalized = [summarize_pr_row(row) for row in pr_rows]
+    in_window = [row for row, raw in zip(normalized, pr_rows) if (_parse_iso(raw.get("mergedAt") or raw.get("updatedAt")) or now) >= cutoff]
+
+    high_risk = [row for row in in_window if row["riskScore"] >= 70]
+    prev_cutoff = cutoff - timedelta(days=window_days)
+    prev_window = [
+        summarize_pr_row(raw)
+        for raw in pr_rows
+        if prev_cutoff <= ((_parse_iso(raw.get("mergedAt") or raw.get("updatedAt")) or now)) < cutoff
+    ]
+    prev_high = len([row for row in prev_window if row["riskScore"] >= 70])
+
+    trend_delta = len(high_risk) - prev_high
+    hot_repositories: Dict[str, int] = {}
+    for row in high_risk:
+        repo = row.get("repo") or "unknown"
+        hot_repositories[repo] = hot_repositories.get(repo, 0) + 1
+
+    top_hot = sorted(hot_repositories.items(), key=lambda kv: (-kv[1], kv[0]))[:3]
+    query = urlencode({"minRisk": 70, "windowDays": window_days})
+    return {
+        "windowDays": window_days,
+        "highRiskPrCount": len(high_risk),
+        "highRiskTrendDelta": trend_delta,
+        "hotRepositories": [{"repo": repo, "count": count, "link": f"/findings?repo={repo}&minRisk=70&windowDays={window_days}"} for repo, count in top_hot],
+        "links": {
+            "highRiskPrs": f"/prs?{query}",
+            "highRiskFindings": f"/findings?{query}",
 def _severity_for_score(score: int) -> str:
     if score >= 70:
         return "high"
