@@ -22,16 +22,6 @@ BULK_ACTION_TO_STATUS = {
     "snooze": "in_progress",
     "close": "resolved",
 }
-BULK_ACTION_TO_STATUS = {
-    "acknowledge": "triaged",
-    "snooze": "in_progress",
-    "close": "resolved",
-}
-BULK_ACTION_TO_STATUS = {
-    "acknowledge": "triaged",
-    "snooze": "in_progress",
-    "close": "resolved",
-}
 
 
 @dataclass(frozen=True)
@@ -134,7 +124,13 @@ def build_active_findings_view(
     }
 
 
-def transition_status(finding: Dict, target_status: str) -> Dict:
+def transition_status(
+    finding: Dict,
+    target_status: str,
+    *,
+    confirmed: bool = False,
+    reason: Optional[str] = None,
+) -> Dict:
     if target_status not in ALL_STATUSES:
         raise ValueError(f"invalid_status:{target_status}")
 
@@ -209,7 +205,10 @@ def bulk_transition_findings(findings: Iterable[Dict[str, Any]], action: str) ->
 
     for finding in findings:
         try:
-            updated_rows.append(transition_status(finding, target))
+            kwargs = {}
+            if target in DONE_STATUSES:
+                kwargs = {"confirmed": True, "reason": f"bulk_{action}"}
+            updated_rows.append(transition_status(finding, target, **kwargs))
         except ValueError as exc:
             skipped += 1
             failures.append(
