@@ -6,3 +6,5 @@ Open-source PR review-to-fix loop automation for GitHub + CodeRabbit
 - `docs/slice-b-ingest-handoff.md` — handoff contract for next ingest adapter slices
 - `docs/pr-summary-contract.md` — deterministic PR summary + baseline metrics contract
 - `docs/idempotency-contract.md` — deterministic idempotency-key contract + persistence adapter behavior
+
+- docs/done-state-regression-checklist.md — done-state UX + regression pass checklist (Issue #54).
