@@ -13,6 +13,37 @@ Canonical normalized finding fields:
 - `fingerprint`: deterministic SHA-256 key (hex)
 - `firstSeenAt` / `lastSeenAt`: RFC3339 timestamps
 - `metadata`: optional source extras
+- `routing` (optional): owner/status/SLA/escalation/done-state extension for Active Findings UX
+
+### Optional `routing` extension
+
+```json
+{
+  "owner": { "id": "u_17", "handle": "@alex" },
+  "status": "assigned",
+  "assignedAt": "2026-04-12T01:20:00Z",
+  "acknowledgedAt": null,
+  "sla": {
+    "dueAt": "2026-04-12T03:20:00Z",
+    "isOverdue": false,
+    "isStale": false,
+    "staleThresholdHours": 8,
+    "policy": "sev2_default_2h"
+  },
+  "escalation": {
+    "active": false,
+    "target": null,
+    "reason": null,
+    "startedAt": null
+  },
+  "doneState": {
+    "isClosed": false,
+    "archived": false,
+    "archivedAt": null,
+    "archiveAfterDays": 14
+  }
+}
+```
 
 ## Fingerprint formula
 

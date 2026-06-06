@@ -37,4 +37,5 @@ python3 -m src.replay_dlq
 - `docs/finding-schema.md` — canonical deterministic finding schema and fingerprint formula
 - `docs/slice-b-ingest-handoff.md` — handoff contract for next ingest adapter slices
 - `docs/pr-summary-contract.md` — deterministic PR summary + baseline metrics contract
+- `docs/idempotency-contract.md` — deterministic idempotency-key contract + persistence adapter behavior
 - `docs/reliability-runbook.md` — reliability metrics/log outputs + DLQ triage/replay procedure
