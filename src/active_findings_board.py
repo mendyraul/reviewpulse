@@ -70,7 +70,9 @@ def build_active_findings_board(
             continue
         enriched = dict(item)
         enriched["ageHours"] = compute_age_hours(enriched["firstSeenAt"], now=now)
-        enriched["riskScore"] = float(enriched.get("riskScore") or (100 - (SEVERITY_ORDER.get(enriched.get("severity", "info"), 4) * 20)))
+        enriched["riskScore"] = float(
+            enriched.get("riskScore") or (100 - (SEVERITY_ORDER.get(enriched.get("severity", "info"), 4) * 20))
+        )
         repo = enriched.get("repo") or enriched.get("repository") or ""
         fid = enriched.get("id") or enriched.get("fingerprint") or ""
         enriched["cta"] = f"/findings/{repo}/{fid}" if repo and fid else "/findings"
@@ -158,7 +160,7 @@ def transition_status(
         "to": target_status,
         "at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
     }
-    if reason:
+    if reason and reason.strip():
         event["reason"] = reason.strip()
     history.append(event)
     updated["statusHistory"] = history
