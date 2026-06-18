@@ -123,7 +123,6 @@ def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
     if not ts:
         return None
     try:
-        return datetime.fromisoformat(ts.replace("Z", "+00:00"))
         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
         return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
     except ValueError:
@@ -131,19 +130,24 @@ def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
 
 
 def build_dashboard_summary(pr_rows: Iterable[Dict], *, window_days: int = 7, now_iso: Optional[str] = None) -> Dict:
+    rows = list(pr_rows)
     now = _parse_iso(now_iso) if now_iso else datetime.now(timezone.utc)
     if now is None:
         now = datetime.now(timezone.utc)
     cutoff = now - timedelta(days=window_days)
 
-    normalized = [summarize_pr_row(row) for row in pr_rows]
-    in_window = [row for row, raw in zip(normalized, pr_rows) if (_parse_iso(raw.get("mergedAt") or raw.get("updatedAt")) or now) >= cutoff]
+    normalized = [summarize_pr_row(row) for row in rows]
+    in_window = [
+        row
+        for row, raw in zip(normalized, rows)
+        if (_parse_iso(raw.get("mergedAt") or raw.get("updatedAt")) or now) >= cutoff
+    ]
 
     high_risk = [row for row in in_window if row["riskScore"] >= 70]
     prev_cutoff = cutoff - timedelta(days=window_days)
     prev_window = [
         summarize_pr_row(raw)
-        for raw in pr_rows
+        for raw in rows
         if prev_cutoff <= ((_parse_iso(raw.get("mergedAt") or raw.get("updatedAt")) or now)) < cutoff
     ]
     prev_high = len([row for row in prev_window if row["riskScore"] >= 70])
@@ -160,10 +164,21 @@ def build_dashboard_summary(pr_rows: Iterable[Dict], *, window_days: int = 7, no
         "windowDays": window_days,
         "highRiskPrCount": len(high_risk),
         "highRiskTrendDelta": trend_delta,
-        "hotRepositories": [{"repo": repo, "count": count, "link": f"/findings?repo={repo}&minRisk=70&windowDays={window_days}"} for repo, count in top_hot],
+        "hotRepositories": [
+            {
+                "repo": repo,
+                "count": count,
+                "link": f"/findings?repo={repo}&minRisk=70&windowDays={window_days}",
+            }
+            for repo, count in top_hot
+        ],
         "links": {
             "highRiskPrs": f"/prs?{query}",
             "highRiskFindings": f"/findings?{query}",
+        },
+    }
+
+
 def _severity_for_score(score: int) -> str:
     if score >= 70:
         return "high"
@@ -173,6 +188,7 @@ def _severity_for_score(score: int) -> str:
 
 
 def build_pr_risk_panel(pr_rows: Iterable[Dict], window_days: int = 7, now_iso: Optional[str] = None) -> Dict:
+    rows = list(pr_rows)
     now = _parse_iso(now_iso) if now_iso else datetime.now(tz=timezone.utc)
     if now is None:
         now = datetime.now(tz=timezone.utc)
@@ -181,7 +197,7 @@ def build_pr_risk_panel(pr_rows: Iterable[Dict], window_days: int = 7, now_iso: 
     previous_start = window_start - timedelta(days=window_days)
 
     current, previous = [], []
-    for row in pr_rows:
+    for row in rows:
         created = _parse_iso(row.get("createdAt"))
         if not created:
             continue
@@ -208,7 +224,10 @@ def build_pr_risk_panel(pr_rows: Iterable[Dict], window_days: int = 7, now_iso: 
             if signal:
                 top_driver_counts[signal] = top_driver_counts.get(signal, 0) + 1
 
-    hot_repos = [{"repo": repo, "highRiskCount": count} for repo, count in sorted(repo_counts.items(), key=lambda x: (-x[1], x[0]))[:3]]
+    hot_repos = [
+        {"repo": repo, "highRiskCount": count}
+        for repo, count in sorted(repo_counts.items(), key=lambda x: (-x[1], x[0]))[:3]
+    ]
     top_contributors = [
         {"signal": signal, "count": count, "link": f"/findings?signal={signal}&window={window_days}d"}
         for signal, count in sorted(top_driver_counts.items(), key=lambda x: (-x[1], x[0]))[:3]
