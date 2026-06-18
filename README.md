@@ -8,3 +8,4 @@ Open-source PR review-to-fix loop automation for GitHub + CodeRabbit
 - `docs/idempotency-contract.md` — deterministic idempotency-key contract + persistence adapter behavior
 
 - docs/done-state-regression-checklist.md — done-state UX + regression pass checklist (Issue #54).
+- `src/dashboard_routes.py` — dashboard payload helpers for `/dashboard/active`, `/dashboard/done`, and PR risk summary regression-safe composition.
