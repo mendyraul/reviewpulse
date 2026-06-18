@@ -22,6 +22,11 @@ BULK_ACTION_TO_STATUS = {
     "snooze": "in_progress",
     "close": "resolved",
 }
+BULK_ACTION_TO_STATUS = {
+    "acknowledge": "triaged",
+    "snooze": "in_progress",
+    "close": "resolved",
+}
 
 
 @dataclass(frozen=True)
@@ -70,9 +75,7 @@ def build_active_findings_board(
             continue
         enriched = dict(item)
         enriched["ageHours"] = compute_age_hours(enriched["firstSeenAt"], now=now)
-        enriched["riskScore"] = float(
-            enriched.get("riskScore") or (100 - (SEVERITY_ORDER.get(enriched.get("severity", "info"), 4) * 20))
-        )
+        enriched["riskScore"] = float(enriched.get("riskScore") or (100 - (SEVERITY_ORDER.get(enriched.get("severity", "info"), 4) * 20)))
         repo = enriched.get("repo") or enriched.get("repository") or ""
         fid = enriched.get("id") or enriched.get("fingerprint") or ""
         enriched["cta"] = f"/findings/{repo}/{fid}" if repo and fid else "/findings"
@@ -126,13 +129,7 @@ def build_active_findings_view(
     }
 
 
-def transition_status(
-    finding: Dict,
-    target_status: str,
-    *,
-    reason: Optional[str] = None,
-    confirmed: bool = False,
-) -> Dict:
+def transition_status(finding: Dict, target_status: str) -> Dict:
     if target_status not in ALL_STATUSES:
         raise ValueError(f"invalid_status:{target_status}")
 
@@ -160,7 +157,7 @@ def transition_status(
         "to": target_status,
         "at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
     }
-    if reason and reason.strip():
+    if reason:
         event["reason"] = reason.strip()
     history.append(event)
     updated["statusHistory"] = history
@@ -207,8 +204,7 @@ def bulk_transition_findings(findings: Iterable[Dict[str, Any]], action: str) ->
 
     for finding in findings:
         try:
-            kwargs = {"reason": "bulk close", "confirmed": True} if target in DONE_STATUSES else {}
-            updated_rows.append(transition_status(finding, target, **kwargs))
+            updated_rows.append(transition_status(finding, target))
         except ValueError as exc:
             skipped += 1
             failures.append(
