@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 
 
 def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
+    """Parse an ISO timestamp and return `None` for missing or invalid values."""
     if not ts:
         return None
     try:
@@ -16,10 +17,12 @@ def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
 
 
 def _link(base: str, params: Dict[str, str]) -> str:
+    """Build a deterministic dashboard link with encoded query params."""
     return f"{base}?{urlencode(params)}"
 
 
 def build_pr_risk_panel(pr_rows: Iterable[Dict], *, days: int = 7, now_iso: Optional[str] = None) -> Dict:
+    """Summarize high-risk PR activity for the selected reporting window."""
     if days not in (7, 30):
         raise ValueError("days must be 7 or 30")
 

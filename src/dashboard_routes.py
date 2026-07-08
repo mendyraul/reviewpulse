@@ -10,6 +10,7 @@ DONE_STATUSES = {"resolved", "archived"}
 
 
 def _timeline_summary(row: Dict[str, Any]) -> Dict[str, Optional[str]]:
+    """Return the latest traceable event for a done-state row."""
     timeline = list(row.get("timeline") or row.get("history") or [])
     if not timeline:
         return {"lastEvent": None, "lastActor": None, "lastAt": None}
@@ -29,6 +30,7 @@ def build_active_dashboard_payload(
     now_iso: Optional[str] = None,
     stale_after_hours: int = 24,
 ) -> Dict[str, Any]:
+    """Build the payload for the active findings dashboard route."""
     rows = [
         row
         for row in enrich_findings(findings, now_iso=now_iso, stale_after_hours=stale_after_hours)
@@ -48,6 +50,7 @@ def build_done_dashboard_payload(
     now_iso: Optional[str] = None,
     stale_after_hours: int = 24,
 ) -> Dict[str, Any]:
+    """Build the payload for completed findings with timeline metadata."""
     rows: List[Dict[str, Any]] = []
     for row in enrich_findings(findings, now_iso=now_iso, stale_after_hours=stale_after_hours):
         if row.get("status") not in DONE_STATUSES:
@@ -74,6 +77,7 @@ def build_dashboard_routes(
     stale_after_hours: int = 24,
     pr_window_days: int = 7,
 ) -> Dict[str, Any]:
+    """Compose the active, done, and risk dashboard payloads."""
     return {
         "active": build_active_dashboard_payload(findings, now_iso=now_iso, stale_after_hours=stale_after_hours),
         "done": build_done_dashboard_payload(findings, now_iso=now_iso, stale_after_hours=stale_after_hours),

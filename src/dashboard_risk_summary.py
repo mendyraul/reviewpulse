@@ -22,10 +22,12 @@ WINDOWS = {
 
 
 def _parse_iso(ts: str) -> datetime:
+    """Parse a required ISO timestamp as a UTC datetime."""
     return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(timezone.utc)
 
 
 def _window_cutoff(window: str, now: Optional[datetime] = None) -> datetime:
+    """Return the lower bound for a named dashboard time window."""
     selected = WINDOWS.get(window)
     if not selected:
         raise ValueError(f"invalid_window:{window}")
@@ -34,10 +36,12 @@ def _window_cutoff(window: str, now: Optional[datetime] = None) -> datetime:
 
 
 def _high_risk(score: int) -> bool:
+    """Classify whether a summarized PR score belongs in the high-risk bucket."""
     return score > 70
 
 
 def build_pr_risk_summary_panel(pr_rows: Iterable[Dict], window: str = "7d", now: Optional[datetime] = None) -> Dict:
+    """Build a compact PR risk summary panel for the chosen time window."""
     cutoff = _window_cutoff(window, now=now)
     rows = [row for row in pr_rows if _parse_iso(row["updatedAt"]) >= cutoff]
 
