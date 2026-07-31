@@ -129,7 +129,13 @@ def build_active_findings_view(
     }
 
 
-def transition_status(finding: Dict, target_status: str) -> Dict:
+def transition_status(
+    finding: Dict,
+    target_status: str,
+    *,
+    reason: Optional[str] = None,
+    confirmed: bool = False,
+) -> Dict:
     if target_status not in ALL_STATUSES:
         raise ValueError(f"invalid_status:{target_status}")
 
@@ -204,7 +210,8 @@ def bulk_transition_findings(findings: Iterable[Dict[str, Any]], action: str) ->
 
     for finding in findings:
         try:
-            updated_rows.append(transition_status(finding, target))
+            kwargs = {"reason": "bulk close", "confirmed": True} if target in DONE_STATUSES else {}
+            updated_rows.append(transition_status(finding, target, **kwargs))
         except ValueError as exc:
             skipped += 1
             failures.append(
