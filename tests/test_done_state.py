@@ -1,6 +1,6 @@
 import unittest
 
-from src.done_state import DoneDecision, apply_done_decision, done_timeline
+from src.workflow import DoneDecision, apply_done_decision, done_timeline
 
 
 class TestDoneState(unittest.TestCase):
@@ -27,10 +27,14 @@ class TestDoneState(unittest.TestCase):
             confirmation=True,
         )
 
-        updated = apply_done_decision(finding, decision, now_iso="2026-05-12T19:10:00+00:00")
+        updated = apply_done_decision(
+            finding, decision, now_iso="2026-05-12T19:10:00+00:00"
+        )
 
         self.assertEqual(updated["status"], "dismissed")
-        self.assertEqual(updated["closeRationale"], "False positive: test fixture-only path")
+        self.assertEqual(
+            updated["closeRationale"], "False positive: test fixture-only path"
+        )
         self.assertEqual(updated["closedAt"], "2026-05-12T19:10:00+00:00")
         self.assertEqual(updated["history"][-1]["event"], "done_state_set")
         self.assertEqual(updated["history"][-1]["state"], "dismissed")

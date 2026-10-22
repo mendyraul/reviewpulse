@@ -18,7 +18,11 @@ class TestDashboardRoutes(unittest.TestCase):
                 "owner": "rico",
                 "firstSeenAt": "2026-05-12T00:00:00Z",
                 "timeline": [
-                    {"event": "status_transition", "actor": "rico", "at": "2026-05-12T00:00:00Z"}
+                    {
+                        "event": "status_transition",
+                        "actor": "rico",
+                        "at": "2026-05-12T00:00:00Z",
+                    }
                 ],
             },
             {
@@ -29,7 +33,11 @@ class TestDashboardRoutes(unittest.TestCase):
                 "owner": "sage",
                 "firstSeenAt": "2026-05-11T00:00:00Z",
                 "timeline": [
-                    {"event": "status_transition", "actor": "sage", "at": "2026-05-12T04:00:00Z"}
+                    {
+                        "event": "status_transition",
+                        "actor": "sage",
+                        "at": "2026-05-12T04:00:00Z",
+                    }
                 ],
             },
             {
@@ -41,7 +49,12 @@ class TestDashboardRoutes(unittest.TestCase):
                 "firstSeenAt": "2026-05-10T00:00:00Z",
                 "resolvedAt": "2026-05-12T06:00:00Z",
                 "timeline": [
-                    {"event": "status_transition", "actor": "rico", "at": "2026-05-12T06:00:00Z", "to": "resolved"}
+                    {
+                        "event": "status_transition",
+                        "actor": "rico",
+                        "at": "2026-05-12T06:00:00Z",
+                        "to": "resolved",
+                    }
                 ],
             },
             {
@@ -53,13 +66,26 @@ class TestDashboardRoutes(unittest.TestCase):
                 "firstSeenAt": "2026-05-09T00:00:00Z",
                 "closedAt": "2026-05-12T07:00:00Z",
                 "history": [
-                    {"event": "done_state_set", "actor": "sage", "at": "2026-05-12T07:00:00Z", "state": "archived"}
+                    {
+                        "event": "done_state_set",
+                        "actor": "sage",
+                        "at": "2026-05-12T07:00:00Z",
+                        "state": "archived",
+                    }
                 ],
             },
         ]
         self.pr_rows = [
-            {"repo": "mendyraul/reviewpulse", "riskScore": 80, "updatedAt": "2026-05-12T00:00:00Z"},
-            {"repo": "mendyraul/TrackFlights", "riskScore": 30, "updatedAt": "2026-05-10T00:00:00Z"},
+            {
+                "repo": "mendyraul/reviewpulse",
+                "riskScore": 80,
+                "updatedAt": "2026-05-12T00:00:00Z",
+            },
+            {
+                "repo": "mendyraul/TrackFlights",
+                "riskScore": 30,
+                "updatedAt": "2026-05-10T00:00:00Z",
+            },
         ]
 
     def test_dashboard_active_only_includes_actionable_findings(self):

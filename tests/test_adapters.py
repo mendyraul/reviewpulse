@@ -14,7 +14,11 @@ FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 
 class TestAdapterMapping(unittest.TestCase):
     def test_github_adapter_maps_to_valid_draft(self):
-        payload = json.loads((FIXTURE_DIR / "adapter_github_review_payload.json").read_text(encoding="utf-8"))
+        payload = json.loads(
+            (FIXTURE_DIR / "adapter_github_review_payload.json").read_text(
+                encoding="utf-8"
+            )
+        )
         draft = adapt_github_review_comment(payload)
         finding = normalize_finding(draft)
 
@@ -28,7 +32,11 @@ class TestAdapterMapping(unittest.TestCase):
         self.assertEqual([], list(validate_finding(finding)))
 
     def test_coderabbit_adapter_maps_to_valid_draft(self):
-        payload = json.loads((FIXTURE_DIR / "adapter_coderabbit_payload.json").read_text(encoding="utf-8"))
+        payload = json.loads(
+            (FIXTURE_DIR / "adapter_coderabbit_payload.json").read_text(
+                encoding="utf-8"
+            )
+        )
         draft = adapt_coderabbit_finding(payload)
         finding = normalize_finding(draft)
 
@@ -39,7 +47,11 @@ class TestAdapterMapping(unittest.TestCase):
         self.assertEqual([], list(validate_finding(finding)))
 
     def test_adapter_output_is_deterministic(self):
-        payload = json.loads((FIXTURE_DIR / "adapter_github_review_payload.json").read_text(encoding="utf-8"))
+        payload = json.loads(
+            (FIXTURE_DIR / "adapter_github_review_payload.json").read_text(
+                encoding="utf-8"
+            )
+        )
         draft_a = adapt_github_review_comment(payload)
         draft_b = adapt_github_review_comment(payload)
 

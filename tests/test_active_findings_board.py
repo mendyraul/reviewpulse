@@ -1,14 +1,13 @@
+from src.workflow import transition_status, bulk_transition_findings
 import unittest
 from datetime import datetime, timezone
 
-from src.active_findings_board import (
+from src.board import (
     BoardFilters,
     build_active_findings_board,
     build_active_findings_view,
     filters_from_query,
     filters_to_query,
-    transition_status,
-    bulk_transition_findings,
 )
 
 
@@ -57,16 +56,19 @@ class TestActiveFindingsBoard(unittest.TestCase):
 
     def test_board_filters_are_deterministic(self):
         filters = BoardFilters(owner="rico", severity="critical")
-        board = build_active_findings_board(self.findings, filters=filters, now=self.now)
+        board = build_active_findings_board(
+            self.findings, filters=filters, now=self.now
+        )
         self.assertEqual([f["fingerprint"] for f in board], ["d"])
 
     def test_valid_status_transition_updates_record(self):
         finding = self.findings[0]
-        triaged = transition_status(finding, "triaged")
-        in_progress = transition_status(triaged, "in_progress")
+        triaged = transition_status(finding, "triaged", actor="tester")
+        in_progress = transition_status(triaged, "in_progress", actor="tester")
         resolved = transition_status(
             in_progress,
             "resolved",
+            actor="tester",
             reason="false positive fixed and validated",
             confirmed=True,
         )
@@ -75,39 +77,46 @@ class TestActiveFindingsBoard(unittest.TestCase):
         self.assertEqual(in_progress["status"], "in_progress")
         self.assertEqual(resolved["status"], "resolved")
         self.assertIn("resolvedAt", resolved)
-        self.assertTrue(resolved["statusHistory"])
-        self.assertEqual(resolved["statusHistory"][-1]["to"], "resolved")
+        self.assertTrue(resolved["history"])
+        self.assertEqual(resolved["history"][-1]["to"], "resolved")
 
     def test_invalid_status_transition_raises(self):
         with self.assertRaises(ValueError):
-            transition_status(self.findings[0], "resolved")
+            transition_status(self.findings[0], "resolved", actor="tester")
 
     def test_done_state_requires_reason_and_confirmation(self):
-        triaged = transition_status(self.findings[0], "triaged")
+        triaged = transition_status(self.findings[0], "triaged", actor="tester")
         with self.assertRaises(ValueError):
-            transition_status(triaged, "dismissed", confirmed=True)
+            transition_status(triaged, "dismissed", actor="tester", confirmed=True)
         with self.assertRaises(ValueError):
-            transition_status(triaged, "accepted_risk", reason="known tradeoff")
+            transition_status(
+                triaged, "accepted_risk", actor="tester", reason="known tradeoff"
+            )
 
     def test_done_state_variants_are_supported(self):
-        triaged = transition_status(self.findings[0], "triaged")
+        triaged = transition_status(self.findings[0], "triaged", actor="tester")
         dismissed = transition_status(
             triaged,
             "dismissed",
+            actor="tester",
             reason="duplicate finding",
             confirmed=True,
         )
         self.assertEqual(dismissed["status"], "dismissed")
-        self.assertEqual(dismissed["statusHistory"][-1]["reason"], "duplicate finding")
+        self.assertEqual(dismissed["history"][-1]["rationale"], "duplicate finding")
 
     def test_filter_query_roundtrip(self):
-        filters = BoardFilters(severity="high", owner="rico", status="new", repo="mendyraul/reviewpulse")
+        filters = BoardFilters(
+            severity="high", owner="rico", status="new", repo="mendyraul/reviewpulse"
+        )
         query = filters_to_query(filters)
         restored = filters_from_query(query)
         self.assertEqual(restored, filters)
 
     def test_view_sort_pagination_and_states(self):
-        view = build_active_findings_view(self.findings, sort_by="risk", page=1, page_size=2, now=self.now)
+        view = build_active_findings_view(
+            self.findings, sort_by="risk", page=1, page_size=2, now=self.now
+        )
         self.assertEqual(view["total"], 3)
         self.assertTrue(view["hasMore"])
         self.assertFalse(view["states"]["empty"])
@@ -115,16 +124,22 @@ class TestActiveFindingsBoard(unittest.TestCase):
         self.assertIn("cta", view["rows"][0])
 
     def test_bulk_transition_acknowledge_and_invalid_rows(self):
-        result = bulk_transition_findings(self.findings, "acknowledge")
+        result = bulk_transition_findings(self.findings, "acknowledge", actor="tester")
         self.assertEqual(result["targetStatus"], "triaged")
         self.assertEqual(result["updated"], 2)
         self.assertEqual(result["skipped"], 2)
         self.assertEqual([row["fingerprint"] for row in result["rows"]], ["a", "d"])
 
     def test_bulk_transition_close_happy_path(self):
-        triaged = transition_status(self.findings[0], "triaged")
-        in_progress = transition_status(triaged, "in_progress")
-        result = bulk_transition_findings([in_progress], "close")
+        triaged = transition_status(self.findings[0], "triaged", actor="tester")
+        in_progress = transition_status(triaged, "in_progress", actor="tester")
+        result = bulk_transition_findings(
+            [in_progress],
+            "close",
+            actor="tester",
+            reason="Validated fix",
+            confirmed=True,
+        )
         self.assertEqual(result["updated"], 1)
         self.assertEqual(result["rows"][0]["status"], "resolved")
 

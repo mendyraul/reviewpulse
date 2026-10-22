@@ -67,7 +67,10 @@ class TestReporting(unittest.TestCase):
         self.assertIsNone(metrics["timeToGreenHours"])
 
     def test_time_to_green_populates_when_all_findings_resolved(self):
-        resolved_only = [dict(f, status="resolved", resolvedAt="2026-03-28T10:00:00Z") for f in self.findings]
+        resolved_only = [
+            dict(f, status="resolved", resolvedAt="2026-03-28T10:00:00Z")
+            for f in self.findings
+        ]
         metrics = calculate_baseline_metrics(resolved_only)
         self.assertEqual(metrics["openFindings"], 0)
         self.assertEqual(metrics["resolvedFindings"], 3)
