@@ -1,6 +1,7 @@
+from src.workflow import transition_status
 import unittest
 
-from src.board import enrich_findings, filter_findings, split_active_and_archive, transition_status
+from src.board import enrich_findings, filter_findings, split_active_and_archive
 
 
 class TestBoard(unittest.TestCase):
@@ -33,7 +34,9 @@ class TestBoard(unittest.TestCase):
         ]
 
     def test_enrich_adds_owner_escalation_age_and_sla(self):
-        enriched = enrich_findings(self.rows, now_iso="2026-04-18T12:00:00Z", stale_after_hours=24)
+        enriched = enrich_findings(
+            self.rows, now_iso="2026-04-18T12:00:00Z", stale_after_hours=24
+        )
 
         first = enriched[0]
         self.assertEqual(first["owner"], "rico")
@@ -50,7 +53,13 @@ class TestBoard(unittest.TestCase):
 
     def test_filters_are_deterministic(self):
         enriched = enrich_findings(self.rows, now_iso="2026-04-18T12:00:00Z")
-        filtered = filter_findings(enriched, severity="high", owner="rico", status="new", repo="mendyraul/reviewpulse")
+        filtered = filter_findings(
+            enriched,
+            severity="high",
+            owner="rico",
+            status="new",
+            repo="mendyraul/reviewpulse",
+        )
         self.assertEqual(len(filtered), 1)
         self.assertEqual(filtered[0]["fingerprint"], "a")
 
@@ -63,8 +72,8 @@ class TestBoard(unittest.TestCase):
             at_iso="2026-04-18T12:30:00Z",
         )
         self.assertEqual(updated["status"], "in_progress")
-        self.assertEqual(len(updated["timeline"]), 1)
-        self.assertEqual(updated["timeline"][0]["from"], "triaged")
+        self.assertEqual(len(updated["history"]), 1)
+        self.assertEqual(updated["history"][0]["from"], "triaged")
 
     def test_invalid_transition_raises(self):
         with self.assertRaises(ValueError):

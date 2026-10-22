@@ -96,20 +96,30 @@ class PipelineTests(unittest.TestCase):
             self.assertIn("## ReviewPulse Summary", summary)
             self.assertIn("### Next Actions", summary)
 
-            ranked = json.loads(Path(tmp, "ranked-findings.json").read_text(encoding="utf-8"))
+            ranked = json.loads(
+                Path(tmp, "ranked-findings.json").read_text(encoding="utf-8")
+            )
             self.assertIsInstance(ranked, list)
             self.assertGreater(len(ranked), 0)
 
-            reliability_metrics = json.loads(Path(tmp, "reliability-metrics.json").read_text(encoding="utf-8"))
+            reliability_metrics = json.loads(
+                Path(tmp, "reliability-metrics.json").read_text(encoding="utf-8")
+            )
             self.assertEqual(reliability_metrics["processed"], report["normalized"])
             self.assertEqual(reliability_metrics["deadLettered"], report["invalid"])
 
-            reliability_events = json.loads(Path(tmp, "reliability-events.json").read_text(encoding="utf-8"))
+            reliability_events = json.loads(
+                Path(tmp, "reliability-events.json").read_text(encoding="utf-8")
+            )
             self.assertEqual(len(reliability_events), report["totalInput"])
 
             dead_letter_path = Path(tmp, "dead-letter.jsonl")
             self.assertTrue(dead_letter_path.exists())
-            dead_letter_rows = [json.loads(line) for line in dead_letter_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            dead_letter_rows = [
+                json.loads(line)
+                for line in dead_letter_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
             self.assertEqual(len(dead_letter_rows), report["invalid"])
             self.assertIn("payload", dead_letter_rows[0])
             self.assertIn("reason", dead_letter_rows[0])

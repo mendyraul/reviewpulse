@@ -54,8 +54,12 @@ class TestIdempotencyContract(unittest.TestCase):
         id_store = InMemoryIdempotencyStore()
         draft_store = InMemoryFindingDraftStore()
 
-        accepted_first = ingest_finding_event(payload, idempotency_store=id_store, finding_store=draft_store)
-        accepted_duplicate = ingest_finding_event(payload, idempotency_store=id_store, finding_store=draft_store)
+        accepted_first = ingest_finding_event(
+            payload, idempotency_store=id_store, finding_store=draft_store
+        )
+        accepted_duplicate = ingest_finding_event(
+            payload, idempotency_store=id_store, finding_store=draft_store
+        )
 
         self.assertTrue(accepted_first)
         self.assertFalse(accepted_duplicate)
@@ -69,8 +73,12 @@ class TestIdempotencyContract(unittest.TestCase):
         id_store = InMemoryIdempotencyStore()
         draft_store = InMemoryFindingDraftStore()
 
-        first = ingest_finding_event(payload, idempotency_store=id_store, finding_store=draft_store)
-        second = ingest_finding_event(dict(payload), idempotency_store=id_store, finding_store=draft_store)
+        first = ingest_finding_event(
+            payload, idempotency_store=id_store, finding_store=draft_store
+        )
+        second = ingest_finding_event(
+            dict(payload), idempotency_store=id_store, finding_store=draft_store
+        )
 
         self.assertTrue(first)
         self.assertFalse(second)

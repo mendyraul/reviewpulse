@@ -3,6 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
+from .workflow import normalize_status, ACTIVE_STATUSES, DONE_STATUSES
+from .time_utils import parse_iso as _parse_iso
+
 SEVERITY_ORDER = ["critical", "high", "medium", "low"]
 SEVERITY_RANK = {name: idx for idx, name in enumerate(SEVERITY_ORDER)}
 
@@ -63,28 +66,20 @@ def render_pr_summary(findings: Iterable[Dict[str, Any]]) -> str:
         lines.append("2. Re-run checks and verify no regressions.")
         lines.append("3. Resolve remaining Medium/Low findings or document deferrals.")
     else:
-        lines.append("1. No findings detected; keep CI green and monitor new review input.")
+        lines.append(
+            "1. No findings detected; keep CI green and monitor new review input."
+        )
 
     return "\n".join(lines).strip() + "\n"
 
 
-def _parse_iso(ts: Optional[str]) -> Optional[datetime]:
-    if not ts:
-        return None
-    normalized = ts.replace("Z", "+00:00")
-    try:
-        return datetime.fromisoformat(normalized)
-    except ValueError:
-        return None
-
-
 def _normalize_owner(raw: Any) -> Optional[str]:
     owner = str(raw or "").strip()
-    return owner if owner else None
+    return owner if owner and owner != "unassigned" else None
 
 
 def _is_open_status(status: Any) -> bool:
-    return str(status or "open").lower() not in {"resolved", "closed", "fixed"}
+    return normalize_status(status) in ACTIVE_STATUSES
 
 
 def calculate_owner_routing_metrics(
@@ -121,7 +116,6 @@ def calculate_owner_routing_metrics(
     for row in unowned_open:
         updated = _parse_iso(row.get("updatedAt") or row.get("firstSeenAt"))
         if not updated:
-            stale_unowned.append(row)
             continue
         age_hours = (now_dt - updated).total_seconds() / 3600
         if age_hours >= stale_hours:
@@ -161,7 +155,7 @@ def calculate_baseline_metrics(findings: Iterable[Dict[str, Any]]) -> Dict[str, 
 
     for finding in rows:
         status = str(finding.get("status", "open")).lower()
-        if status in {"resolved", "closed", "fixed"}:
+        if normalize_status(status) in DONE_STATUSES:
             resolved_count += 1
         else:
             open_count += 1

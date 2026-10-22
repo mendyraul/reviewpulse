@@ -23,12 +23,16 @@ class TestNormalizeFinding(unittest.TestCase):
             self.assertEqual([], list(validate_finding(finding)), path.name)
 
     def test_malformed_fixture_missing_rule_raises(self):
-        raw = json.loads((FIXTURE_DIR / "malformed_missing_rule.json").read_text(encoding="utf-8"))
+        raw = json.loads(
+            (FIXTURE_DIR / "malformed_missing_rule.json").read_text(encoding="utf-8")
+        )
         with self.assertRaises(KeyError):
             normalize_finding(raw)
 
     def test_malformed_fixture_bad_line_fails_validation(self):
-        raw = json.loads((FIXTURE_DIR / "malformed_bad_line.json").read_text(encoding="utf-8"))
+        raw = json.loads(
+            (FIXTURE_DIR / "malformed_bad_line.json").read_text(encoding="utf-8")
+        )
         finding = normalize_finding(raw)
         self.assertIn("lineStart<1", list(validate_finding(finding)))
 

@@ -17,7 +17,9 @@ from src.reliability import (
 
 class ReliabilityTrackerTests(unittest.TestCase):
     def test_retry_policy_backoff_is_bounded_and_deterministic(self) -> None:
-        policy = RetryPolicy(max_attempts=4, base_delay_seconds=0.5, max_delay_seconds=1.0)
+        policy = RetryPolicy(
+            max_attempts=4, base_delay_seconds=0.5, max_delay_seconds=1.0
+        )
         self.assertEqual(policy.delay_for_attempt(1), 0.5)
         self.assertEqual(policy.delay_for_attempt(2), 1.0)
         self.assertEqual(policy.delay_for_attempt(3), 1.0)
@@ -76,7 +78,9 @@ class ReliabilityTrackerTests(unittest.TestCase):
             entries = queue.read_entries()
             dry_run_report = replay_dead_letters(entries, ledger=ledger, dry_run=True)
             self.assertEqual(dry_run_report["replayed"], 1)
-            self.assertFalse(ledger_path.exists(), "dry-run should not mutate replay ledger")
+            self.assertFalse(
+                ledger_path.exists(), "dry-run should not mutate replay ledger"
+            )
 
             real_report = replay_dead_letters(entries, ledger=ledger, dry_run=False)
             self.assertEqual(real_report["replayed"], 1)

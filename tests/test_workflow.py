@@ -10,7 +10,7 @@ from src.workflow import (
 
 class TestWorkflow(unittest.TestCase):
     def test_done_state_transition_writes_resolution_and_history(self) -> None:
-        finding = {"id": "F-1", "status": "open"}
+        finding = {"id": "F-1", "status": "acknowledged"}
 
         updated = transition_finding_state(
             finding,
@@ -18,17 +18,23 @@ class TestWorkflow(unittest.TestCase):
             to_state="resolved",
             rationale="Fix merged in PR #35",
             now_iso="2026-05-12T06:30:00Z",
+            confirmed=True,
         )
 
         self.assertEqual(updated["status"], "resolved")
         self.assertEqual(updated["resolvedAt"], "2026-05-12T06:30:00Z")
         self.assertEqual(updated["resolution"]["rationale"], "Fix merged in PR #35")
-        self.assertEqual(updated["history"][0]["from"], "open")
+        self.assertEqual(updated["history"][0]["from"], "acknowledged")
         self.assertEqual(updated["history"][0]["to"], "resolved")
 
     def test_done_state_requires_rationale(self) -> None:
         with self.assertRaisesRegex(ValueError, "Rationale is required"):
-            transition_finding_state({"status": "open"}, actor="rico", to_state="dismissed", rationale="  ")
+            transition_finding_state(
+                {"status": "acknowledged"},
+                actor="rico",
+                to_state="dismissed",
+                rationale="  ",
+            )
 
     def test_reopen_clears_resolution_timestamp_and_appends_history(self) -> None:
         finding = {
@@ -45,18 +51,22 @@ class TestWorkflow(unittest.TestCase):
             now_iso="2026-05-12T07:30:00Z",
         )
 
-        self.assertEqual(updated["status"], "reopened")
+        self.assertEqual(updated["status"], "in_progress")
         self.assertNotIn("resolvedAt", updated)
         self.assertEqual(updated["reopenedAt"], "2026-05-12T07:30:00Z")
         self.assertEqual(updated["history"][-1]["from"], "resolved")
-        self.assertEqual(updated["history"][-1]["to"], "reopened")
+        self.assertEqual(updated["history"][-1]["to"], "in_progress")
 
     def test_reopen_requires_done_state(self) -> None:
         with self.assertRaisesRegex(ValueError, "already open"):
-            reopen_finding({"status": "open"}, actor="rico", rationale="Still under investigation")
+            reopen_finding(
+                {"status": "acknowledged"},
+                actor="rico",
+                rationale="Still under investigation",
+            )
 
     def test_done_state_confirmation_payload_is_explicit(self) -> None:
-        finding = {"id": "F-3", "status": "open"}
+        finding = {"id": "F-3", "status": "acknowledged"}
 
         confirmation = build_done_state_confirmation(
             finding,
@@ -66,7 +76,7 @@ class TestWorkflow(unittest.TestCase):
         )
 
         self.assertEqual(confirmation["findingId"], "F-3")
-        self.assertEqual(confirmation["from"], "open")
+        self.assertEqual(confirmation["from"], "acknowledged")
         self.assertEqual(confirmation["to"], "accepted_risk")
         self.assertIs(confirmation["requiresConfirmation"], True)
         self.assertIn("audit timeline", confirmation["message"])
