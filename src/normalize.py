@@ -3,12 +3,15 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = ROOT / "schema" / "finding.schema.json"
+if not SCHEMA_PATH.exists():
+    SCHEMA_PATH = Path(sys.prefix) / "share/reviewpulse/schema/finding.schema.json"
 
 
 def _norm_space(value: str) -> str:

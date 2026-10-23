@@ -14,7 +14,7 @@ def _timeline_summary(row: Dict[str, Any]) -> Dict[str, Optional[str]]:
     if not timeline:
         return {"lastEvent": None, "lastActor": None, "lastAt": None}
 
-    ordered = sorted(timeline, key=lambda entry: entry.get("at", ""))
+    ordered = timeline
     latest = ordered[-1]
     return {
         "lastEvent": latest.get("event") or latest.get("to") or latest.get("state"),

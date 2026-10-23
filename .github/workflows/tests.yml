@@ -11,5 +11,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install pytest
+      - run: python -m pip install -e '.[dev]'
+      - run: ruff check src tests scripts
       - run: python -m pytest -q
+      - run: python -m build
+      - run: python scripts/smoke_wheel.py
+      - if: matrix.python == '3.12'
+        run: python -m playwright install --with-deps chromium
+      - if: matrix.python == '3.12'
+        run: python -m pytest tests/test_browser.py -q
+        env:
+          RUN_BROWSER_TESTS: '1'

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf }}">
+  <title>{{ view|capitalize }} · ReviewPulse</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+  <script defer src="/static/dashboard.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header><a class="brand" href="/dashboard/active"><span class="logo" aria-hidden="true">R</span> ReviewPulse <small>LOCAL</small></a><span class="identity">Local actor <strong>{{ actor }}</strong></span></header>
+<div class="workspace">
+<aside aria-label="Dashboard navigation">
+  <p class="eyebrow">REVIEW WORKSPACE</p>
+  <nav>{% for key,label in [('active','Active findings'),('done','Done & archive'),('risk','PR risk overview'),('findings','All findings'),('prs','Pull requests')] %}<a href="/dashboard/{{ key }}" {% if view == key %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+  <div class="local-note"><strong>Local triage</strong><p>Assignments, status and audit stay on this computer. Actor labels identify local edits.</p></div>
+</aside>
+<main id="main">
+  {% if demo %}<div class="banner demo"><strong>DEMO MODE</strong> · Sample findings and risk data. Demo edits use a separate database.</div>{% endif %}
+  <section class="source"><div><span class="eyebrow">{{ 'DEMO FIXTURES' if demo else 'PIPELINE ARTIFACTS' }}</span><p>{{ source }}</p><small>Last successful refresh: <time>{{ refreshed or 'Never' }}</time> <span id="stale-indicator" data-refreshed="{{ refreshed or '' }}"></span></small></div><button id="refresh" type="button">Refresh snapshot</button></section>
+  <div id="notice" role="status" aria-live="polite"></div>
+  {% if error %}<section class="banner error" role="alert"><h1>Source needs attention</h1><p>{{ error }}</p><p>Generate <code>normalized-findings.json</code> using the pipeline, then refresh. Previous imported rows remain stored; editing is paused until the source loads.</p><pre>python -m src.pipeline YOUR_PAYLOAD.json --output-dir artifacts/pipeline-run</pre><p>For sample data, restart with <code>python -m src.server --demo</code>.</p></section>{% endif %}
+  {% if view in ['active','done','findings'] %}
+    <div class="page-heading"><div><p class="eyebrow">FINDINGS</p><h1>{{ {'active':'Your active review queue','done':'Done & archived findings','findings':'All review findings'}[view] }}</h1><p>{{ total }} matching finding{{ '' if total == 1 else 's' }} · Ordered by severity and age</p></div></div>
+    <form class="filters" method="get" aria-label="Filter findings">
+      <label>Search<input name="q" value="{{ query.get('q','') }}" placeholder="Message, file or rule"></label>
+      <label>Severity<select name="severity"><option value="">All severities</option>{% for s in ['critical','high','medium','low','info'] %}<option {% if query.get('severity') == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+      <label>Owner<input name="owner" value="{{ query.get('owner','') }}" placeholder="Any owner"></label>
+      <label>Repository<input name="repo" value="{{ query.get('repo','') }}" placeholder="owner/repo"></label>
+      <label>Status<select name="status"><option value="">All statuses</option>{% for s in ['new','triaged','in_progress','resolved','dismissed','accepted_risk','archived'] %}<option {% if query.get('status') == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select></label>
+      <label>Order<select name="sort"><option value="severity">Severity & age</option><option value="updated" {% if query.get('sort') == 'updated' %}selected{% endif %}>Last updated</option></select></label>
+      {% for key in ['risk','riskMin','signal','pr','window'] %}{% if query.get(key) %}<input type="hidden" name="{{ key }}" value="{{ query[key] }}">{% endif %}{% endfor %}
+      <button type="submit">Apply filters</button><a href="/dashboard/{{ view }}">Clear</a>
+    </form>
+    {% if query.get('risk') or query.get('signal') or query.get('window') %}<p class="filter-note">PR drilldown: {{ query.get('signal','') }} {{ 'high risk' if query.get('risk') else '' }} {{ '· ' ~ query['window'] ~ ' day window' if query.get('window') else '' }}. Only matching PRs with supplied data are included.</p>{% endif %}
+    {% if rows %}<div class="finding-list">{% for f in rows %}<article class="finding-card">
+      <div class="card-top"><span class="severity {{ f.severity }}">{{ f.severity }}</span><span class="status">{{ f.status|replace('_',' ') }}</span>{% if f.owner == "unassigned" %}<span class="warning">Needs owner</span>{% endif %}{% if f.escalation != "none" %}<span class="warning">Escalation: {{ f.escalation }}</span>{% endif %}{% if f.isStale %}<span class="warning">Stale · over 24h</span>{% endif %}{% if not f.presentInSnapshot %}<span class="warning">Absent from latest snapshot</span>{% endif %}</div>
+      <h2><a href="/findings/{{ f.fingerprint }}">{{ f.message }}</a></h2>
+      <p class="location">{{ f.repo }} <a href="/dashboard/findings?{{ {'repo':f.repo,'pr':f.prNumber}|urlencode }}">#{{ f.prNumber }}</a> · <code>{{ f.path }}{% if f.lineStart %}:{{ f.lineStart }}{% endif %}</code></p>
+      <div class="card-bottom"><span>Owner <strong>{{ f.owner }}</strong></span><span>Age {{ (f.ageHours|string ~ 'h') if f.ageHours is not none else 'unknown' }}</span><a class="detail-link" href="/findings/{{ f.fingerprint }}">Triage & evidence →</a></div>
+    </article>{% endfor %}</div>{% else %}<section class="empty"><h2>No matching findings</h2><p>{{ 'Adjust your filters or refresh after running the pipeline.' if query else 'This queue is clear. Refresh after the next pipeline run.' }}</p><a href="/dashboard/findings">View all findings</a></section>{% endif %}
+    <nav class="pagination" aria-label="Pagination">{% if previous %}<a href="{{ previous }}">← Previous</a>{% endif %}<span>Page {{ page }}</span>{% if next %}<a href="{{ next }}">Next →</a>{% endif %}</nav>
+  {% elif view == 'risk' %}
+    <div class="page-heading"><div><p class="eyebrow">PR RISK</p><h1>Review the changes that need attention</h1><p>Risk scores come from supplied PR data. Finding severity stays separate.</p></div><form method="get"><label>Reporting window<select name="window"><option value="7" {% if days == 7 %}selected{% endif %}>7 days</option><option value="30" {% if days == 30 %}selected{% endif %}>30 days</option></select></label><button>Update</button></form></div>
+    <div class="metrics"><a class="metric" href="{{ risk.links.prList }}"><span>High risk PRs</span><strong>{{ risk.highRiskCount }}</strong><small>Score ≥70 · View PRs →</small></a><div class="metric"><span>Change vs previous {{ days }} days</span><strong>{{ '+' if risk.highRiskTrend > 0 else '' }}{{ risk.highRiskTrend }}</strong><small>Count difference from supplied snapshots</small></div><div class="metric"><span>Data coverage</span><strong>{{ risk.coverage.inWindow }} / {{ risk.coverage.total }}</strong><small>PRs dated within this window</small></div></div>
+    <p class="filter-note">{{ risk.coverage.unknownScore }} in-window PRs have unknown scores. {{ risk.coverage.missingTimestamp }} PRs have no timestamp and are excluded from window metrics. <a href="/dashboard/prs">Inspect all PR data</a></p>
+    <div class="two-columns"><section class="panel"><h2>Repositories with high risk PRs</h2>{% for r in risk.hotRepositories %}<a class="summary-row" href="{{ risk.links.repos[loop.index0] }}"><span>{{ r.repo }}</span><strong>{{ r.count }} →</strong></a>{% else %}<p>No supplied high risk PRs in this window.</p>{% endfor %}<a href="{{ risk.links.highRisk }}">View matching findings →</a></section><section class="panel"><h2>Risk drivers</h2>{% for c in risk.topContributors %}<a class="summary-row" href="{{ c.link }}"><span>{{ c.signal|replace('_',' ') }}</span><strong>{{ c.count }} →</strong></a>{% else %}<p>No risk drivers supplied.</p>{% endfor %}</section></div>
+    <section class="panel"><h2>Supply PR data</h2><p>Start with <code>--pr-data prs.json</code>. Each row needs <code>repo</code>, <code>number</code>, a real timestamp and <code>riskScore</code> (0–100) or weighted <code>signals</code>. Missing scores remain unknown.</p></section>
+  {% elif view == 'prs' %}
+    <p class="eyebrow">PULL REQUESTS</p><h1>Imported PR context</h1><p>Includes PRs referenced by findings. Scores and timestamps require a supplied PR data file.</p>
+    {% for pr in prs %}<article class="finding-card"><div class="card-top"><span class="status">{{ pr.repo }} #{{ pr.number }}</span><span class="severity {{ 'high' if pr.riskScore is not none and pr.riskScore >= 70 else 'info' }}">Risk {{ pr.riskScore if pr.riskScore is not none else 'unknown' }}</span></div><h2>{{ pr.get('title','Pull request') }}</h2><p>Updated {{ pr.get('updatedAt') or pr.get('mergedAt') or pr.get('createdAt') or 'unknown' }}</p><a href="/dashboard/findings?{{ {'repo':pr.repo,'pr':pr.number}|urlencode }}">View findings & evidence →</a></article>{% else %}<section class="empty"><h2>No matching PRs</h2><p>Check filters or provide PR data with timestamps and risk scores.</p><a href="/dashboard/prs">View all PRs</a></section>{% endfor %}
+  {% elif view == 'detail' %}
+    <a href="/dashboard/active">← Active queue</a>
+    <div class="page-heading"><div><p class="eyebrow">FINDING DETAIL</p><h1>{{ finding.path }}{% if finding.lineStart %}:{{ finding.lineStart }}{% endif %}</h1><p>{{ finding.repo }} #{{ finding.prNumber }} · {{ finding.get('ruleId','Unspecified rule') }}</p></div><span class="severity {{ finding.severity }}">{{ finding.severity }}</span></div>
+    {% if not finding.presentInSnapshot %}<p class="banner">Absent from the latest snapshot. Local triage and history are retained.</p>{% endif %}
+    <div class="two-columns detail"><section class="panel"><h2>Review evidence</h2><p class="evidence">{{ finding.message }}</p>{% if github_url %}<a href="{{ github_url }}" target="_blank" rel="noopener noreferrer">Open PR on GitHub ↗</a>{% endif %}<dl><dt>Status</dt><dd>{{ finding.status|replace('_',' ') }}</dd><dt>Owner</dt><dd>{{ finding.owner }}</dd><dt>First seen</dt><dd>{{ finding.get('firstSeenAt') or 'Unknown' }}</dd><dt>Last seen</dt><dd>{{ finding.get('lastSeenAt') or 'Unknown' }}</dd><dt>Fingerprint</dt><dd><code>{{ finding.fingerprint }}</code></dd></dl>{% if finding.get('metadata') %}<details><summary>Source metadata</summary><pre>{{ finding.metadata|tojson(indent=2) }}</pre></details>{% endif %}</section>
+    <section class="panel"><h2>Local triage</h2><p>Saved as <strong>{{ actor }}</strong> on this computer.</p>
+      <form id="assign-form" data-fingerprint="{{ finding.fingerprint }}" data-revision="{{ finding.revision }}"><label>Owner label<input name="owner" maxlength="100" value="{{ '' if finding.owner == 'unassigned' else finding.owner }}" placeholder="Leave blank to unassign"></label><button {% if error %}disabled{% endif %}>Save assignment</button></form>
+      <hr><form id="status-form" data-fingerprint="{{ finding.fingerprint }}" data-revision="{{ finding.revision }}"><label>Action<select name="action" aria-label="Action">{% if finding.status == 'new' %}<option value="acknowledge">Acknowledge → triaged</option>{% elif finding.status in ['triaged','in_progress'] %}{% if finding.status == 'triaged' %}<option value="start">Start work → in progress</option>{% else %}<option value="acknowledge">Return to triaged</option>{% endif %}<option value="resolved">Resolve</option><option value="dismissed">Dismiss</option><option value="accepted_risk">Accept risk</option>{% else %}<option value="reopen">Reopen → in progress</option>{% if finding.status != 'archived' %}<option value="archive">Archive</option>{% endif %}{% endif %}</select></label><label>Rationale<textarea name="rationale" rows="3" maxlength="4000" placeholder="Required to complete, archive or reopen"></textarea></label><label class="checkbox"><input name="confirmed" type="checkbox"> I confirm this completion or archive action.</label><button {% if error %}disabled{% endif %}>Apply status change</button></form>
+    </section></div>
+    <section class="panel timeline"><h2>Audit timeline</h2>{% for event in history|reverse %}<article><time>{{ event.get('at','Unknown time') }}</time><strong>{{ event.get('actor','Unknown actor') }}</strong><p>{% if event.get('event') == 'owner_assigned' %}Owner: {{ event.get('fromOwner') or 'unassigned' }} → {{ event.owner }}{% else %}{{ event.get('from','unknown') }} → {{ event.get('to') or event.get('state','unknown') }}{% endif %}</p><p>{{ event.get('rationale') or event.get('reason','') }}</p></article>{% else %}<p>No recorded actions yet.</p>{% endfor %}</section>
+  {% endif %}
+  <footer>ReviewPulse · Local pipeline artifacts & persisted triage · {{ 'Demo fixture data' if demo else 'No live GitHub synchronization' }}</footer>
+</main></div></body></html>

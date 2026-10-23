@@ -2,3 +2,11 @@ __pycache__/
 *.pyc
 
 STATUS.md
+
+.venv/
+artifacts/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
