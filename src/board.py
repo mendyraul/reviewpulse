@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
 
 from .time_utils import parse_iso as _parse_iso, utc_now
@@ -216,7 +216,7 @@ def build_owner_routing_view(
     filters: OwnerRoutingFilters = OwnerRoutingFilters(),
     now: Optional[datetime] = None,
 ) -> Dict:
-    now_utc = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    now_utc = utc_now(now.isoformat() if now else None)
     rows: List[Dict] = []
     owner_counts: Dict[str, int] = defaultdict(int)
     unowned = 0

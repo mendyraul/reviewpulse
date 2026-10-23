@@ -91,8 +91,10 @@ def build_risk_summary(
     )
 
 
-def evidence_link(pr_number: int, signal_name: str) -> str:
-    return f"/evidence?{urlencode({'pr': pr_number, 'signal': signal_name})}"
+def evidence_link(pr_number: int, signal_name: str, repo=None) -> str:
+    return "/evidence?" + urlencode(
+        {"pr": pr_number, "signal": signal_name, **({"repo": repo} if repo else {})}
+    )
 
 
 def summarize_pr_row(pr: Dict) -> Dict:
@@ -101,7 +103,8 @@ def summarize_pr_row(pr: Dict) -> Dict:
     summary = build_risk_summary(
         signals,
         evidence_by_signal={
-            name: evidence_link(pr_number, name) for name in WEIGHTS.keys()
+            name: evidence_link(pr_number, name, pr.get("repo"))
+            for name in WEIGHTS.keys()
         },
     )
 
