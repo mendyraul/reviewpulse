@@ -312,3 +312,13 @@ def test_done_api_preserves_composer_contract_and_reopen_clears_imported_closure
     )
     row = client.app.state.store.get("stable-1")
     assert row["status"] == "in_progress" and "resolvedAt" not in row
+
+
+@pytest.mark.parametrize("bad_date", [{"invalid": True}, "not-a-date", 0])
+def test_malformed_completion_dates_are_a_source_error(tmp_path, source, bad_date):
+    source[1].update(status="resolved", closedAt=bad_date)
+    (source[0] / "normalized-findings.json").write_text(json.dumps([source[1]]))
+    client = client_for(tmp_path, source)
+    page = client.get("/dashboard/done")
+    assert page.status_code == 503
+    assert "invalid closedAt" in page.text

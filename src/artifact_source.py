@@ -47,8 +47,16 @@ def load_snapshot(artifacts_dir, pr_data=None):
             raise ArtifactError(f"Finding {fid}: invalid severity")
         if normalize_status(row.get("status")) not in ACTIVE_STATUSES | DONE_STATUSES:
             raise ArtifactError(f"Finding {fid}: unsupported status")
-        for field in ("firstSeenAt", "lastSeenAt", "updatedAt"):
-            if row.get(field) and parse_iso(row[field]) is None:
+        for field in (
+            "firstSeenAt",
+            "lastSeenAt",
+            "updatedAt",
+            "resolvedAt",
+            "closedAt",
+            "archivedAt",
+            "reopenedAt",
+        ):
+            if row.get(field) not in (None, "") and parse_iso(row[field]) is None:
                 raise ArtifactError(f"Finding {fid}: invalid {field}")
         for field in ("history", "timeline", "statusHistory"):
             events = row.get(field, [])
@@ -71,7 +79,7 @@ def load_snapshot(artifacts_dir, pr_data=None):
             ):
                 raise ValueError("Each PR needs repo and a positive integer number")
             for field in ("updatedAt", "mergedAt", "createdAt"):
-                if pr.get(field) and parse_iso(pr[field]) is None:
+                if pr.get(field) not in (None, "") and parse_iso(pr[field]) is None:
                     raise ValueError(f"PR {pr['number']}: invalid {field}")
             signals = pr.get("signals", {})
             if not isinstance(signals, dict) or any(
